@@ -48,7 +48,7 @@ fn read_from_tun(file: &File) -> std::io::Result<Vec<u8>> {
     buffer.truncate(len as usize);
     Ok(buffer)
 }
-
+/*
 fn write_to_interface(socket_fd: RawFd, packet: &[u8], dest_ifindex: i32) -> std::io::Result<()> {
     let mut sockaddr: sockaddr_ll = unsafe { mem::zeroed() };
     sockaddr.sll_family = AF_PACKET as u16;
@@ -72,6 +72,7 @@ fn write_to_interface(socket_fd: RawFd, packet: &[u8], dest_ifindex: i32) -> std
 
     Ok(())
 }
+*/
 
 
 
@@ -87,8 +88,7 @@ fn write_to_interface(socket_fd: RawFd, packet: &[u8], dest_ifindex: i32) -> std
 
 
 
-
-
+/*
 fn get_interface_index(interface: &str) -> std::io::Result<i32> {
     let socket_fd = unsafe { socket(AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be() as i32) };
     if socket_fd < 0 {
@@ -109,13 +109,14 @@ fn get_interface_index(interface: &str) -> std::io::Result<i32> {
 
     Ok(unsafe { ifr.ifr_ifru.ifru_ifindex })
 }
+*/
 
 fn main() -> std::io::Result<()> {
     let tun_file = create_tun_interface("tun0")?;
     println!("TUN interface created: tun0");
 
-    let dest_ifindex = get_interface_index(DEST_INTERFACE)?;
-    println!("Forwarding packets to interface index: {}", dest_ifindex);
+    //let dest_ifindex = get_interface_index(DEST_INTERFACE)?;
+    //println!("Forwarding packets to interface index: {}", dest_ifindex);
 
     let socket_fd = unsafe { socket(AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be() as i32) };
     if socket_fd < 0 {
@@ -126,7 +127,12 @@ fn main() -> std::io::Result<()> {
         let packet = read_from_tun(&tun_file)?;
         println!("Received packet: {:?}", &packet[..20]);
 
+        //AT THIS POINT WE HAVE IPHeader and on of packet, we should be able to write it directly
+        //to a raw socket and expect a response
+
+        /*
         write_to_interface(socket_fd, &packet, dest_ifindex)?;
         println!("Forwarded packet to {}", DEST_INTERFACE);
+        */
     }
 }
