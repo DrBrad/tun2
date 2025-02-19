@@ -57,6 +57,7 @@ fn read_from_tun(file: &File) -> std::io::Result<Vec<u8>> {
     buffer.truncate(len as usize);
     Ok(buffer)
 }
+
 /*
 fn write_to_interface(socket_fd: RawFd, packet: &[u8], dest_ifindex: i32) -> std::io::Result<()> {
     let mut sockaddr: sockaddr_ll = unsafe { mem::zeroed() };
@@ -82,19 +83,21 @@ fn write_to_interface(socket_fd: RawFd, packet: &[u8], dest_ifindex: i32) -> std
     Ok(())
 }
 */
+
 fn write_to_tun(file: &File, packet: &[u8]) -> std::io::Result<()> {
     let mut modified_packet = packet.to_vec();
     modify_ip_packet_2(&mut modified_packet); // Change the source IP
 
-    println!("Sending packet with length: {}", packet.len());
+    //println!("Sending packet with length: {}", packet.len());
     //let len = unsafe { libc::write(file.as_raw_fd(), packet.as_ptr() as *const _, packet.len()) };
     let len = unsafe { libc::write(file.as_raw_fd(), modified_packet.as_ptr() as *const _, modified_packet.len()) };
-    println!("Length: {}", len);
+    //println!("Length: {}", len);
 
     if len < 0 {
         println!("{}", std::io::Error::last_os_error());
         return Err(std::io::Error::last_os_error());
     }
+
     Ok(())
 }
 
@@ -155,7 +158,7 @@ fn modify_ip_packet_2(packet: &mut [u8]) {
     }
 
     // Modify source IP (bytes 12-15 in IPv4 header)
-    packet[12..16].copy_from_slice(&NEW_DEST_IP);
+    packet[16..20].copy_from_slice(&NEW_DEST_IP);
 
     // Zero out checksum before recalculating
     packet[10] = 0;
@@ -304,6 +307,13 @@ fn main() -> std::io::Result<()> {
             if len > 0 {
                 buffer.truncate(len as usize);
 
+
+                if buffer.len() > 14 {
+                    write_to_tun(&tun_file_clone, &buffer[14..]);
+                }
+
+                /*
+
                 let _type = Types::get_type_from_code(u16::from_be_bytes([buffer[12], buffer[13]])).unwrap();
 
                 match _type {
@@ -319,7 +329,7 @@ fn main() -> std::io::Result<()> {
                         //println!("WLP: {}", Protocols::get_protocol_from_code(buffer[20]).unwrap().to_string());
                     }
                     Types::Broadcast => {}
-                }
+                }*/
 
             }
         }
