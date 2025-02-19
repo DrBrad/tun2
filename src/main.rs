@@ -14,6 +14,7 @@ sudo ip link set dev tun0 up
 sudo ip route add default via 10.0.0.1 dev tun0
 
 ping -I tun0 8.8.8.8
+sudo tcpdump -i wlp7s0
 */
 
 fn create_tun_interface(name: &str) -> std::io::Result<File> {
