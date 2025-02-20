@@ -2,30 +2,12 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
-use libc::{ifreq, ioctl, sendto, sockaddr, sockaddr_ll, socket, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW};
-use crate::{DEST_MAC, ETHERTYPE_IPV4};
+use libc::{ifreq, ioctl, sendto, sockaddr, sockaddr_ll, socket};
+use crate::{Ifreq, AF_INET, AF_PACKET, DEST_MAC, ETHERTYPE_IPV4, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW};
 use crate::utils::ip_utils::compute_checksum;
 
 
 const SIOCGIFADDR: u64 = 0x8915; // ioctl command for getting IP address
-
-// Structure to store interface request (ifreq) data
-#[repr(C)]
-#[derive(Debug)]
-struct Ifreq {
-    ifr_name: [i8; 16],
-    ifr_addr: sockaddr_in,
-}
-
-// Structure to store sockaddr_in (IPv4 address)
-#[repr(C)]
-#[derive(Debug)]
-struct sockaddr_in {
-    sin_family: u16,
-    sin_port: u16,
-    sin_addr: u32,
-    sin_zero: [i8; 8],
-}
 
 #[derive(Clone)]
 pub struct Interface {

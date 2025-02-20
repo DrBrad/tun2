@@ -7,8 +7,55 @@ use std::io::{Read, Write};
 use std::net::Ipv4Addr;
 use std::os::unix::io::AsRawFd;
 use std::thread;
+use libc::{c_int, c_ulong};
 use crate::interface::Interface;
 use crate::tunnel::Tunnel;
+
+
+
+
+pub const AF_INET: i32 = 2;
+pub const SOCK_DGRAM: i32 = 2;
+pub const SIOCSIFADDR: u64 = 0x00008916;
+pub const IFF_TUN: i16 = 0x0001;
+pub const IFF_NO_PI: i16 = 0x1000;
+
+pub const IFF_UP: i32 = 0x1;
+pub const IFF_RUNNING: i32 = 0x40;
+pub const SIOCSIFFLAGS: u64 = 0x00008914;
+
+pub const AF_PACKET: i32 = 17;
+pub const ETH_P_ALL: i32 = 0x0003;
+pub const SIOCGIFHWADDR: u64 = 0x00008927;
+pub const SOCK_RAW: i32 = 3;
+
+
+
+
+
+
+#[repr(C)]
+#[derive(Debug)]
+struct Ifreq {
+    ifr_name: [i8; 16],
+    ifr_addr: sockaddr_in,
+}
+
+// Structure to store sockaddr_in (IPv4 address)
+#[repr(C)]
+#[derive(Debug)]
+struct sockaddr_in {
+    sin_family: u16,
+    sin_port: u16,
+    sin_addr: u32,
+    sin_zero: [i8; 8],
+}
+
+
+
+
+
+
 
 const DEST_INTERFACE: &str = "wlp2s0"; // Change this to your real interface
 

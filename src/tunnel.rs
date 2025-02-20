@@ -6,22 +6,10 @@ use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
 use std::process::Command;
 use libc::{ifreq, ioctl, socket, sockaddr_in};
-use crate::NEW_DEST_IP;
+use crate::{AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, NEW_DEST_IP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM};
 use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
-
-
-pub const AF_INET: i32 = 2;
-pub const SOCK_DGRAM: i32 = 2;
-pub const SIOCSIFADDR: u64 = 0x00008916;
-pub const IFF_TUN: i16 = 0x0001;
-pub const IFF_NO_PI: i16 = 0x1000;
-
-pub const IFF_UP: i32 = 0x1;
-pub const IFF_RUNNING: i32 = 0x40;
-pub const SIOCSIFFLAGS: u64 = 0x00008914;
-
 
 
 
