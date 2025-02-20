@@ -4,7 +4,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
-use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL};
+use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL, SYS_READ};
 use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
@@ -45,7 +45,7 @@ impl Tunnel {
 
     pub fn read(&self) -> io::Result<Vec<u8>> {
         let mut buffer = vec![0u8; 4096];
-        let len = unsafe { libc::read(self.file.as_raw_fd(), buffer.as_mut_ptr() as *mut _, buffer.len()) };
+        let len = unsafe { syscall(SYS_READ, self.file.as_raw_fd(), buffer.as_mut_ptr() as *mut _, buffer.len()) };
 
         if len < 0 {
             return Err(io::Error::last_os_error());

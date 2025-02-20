@@ -2,7 +2,7 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
-use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ};
+use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ, SYS_READ};
 use crate::utils::ip_utils::compute_checksum;
 
 
@@ -41,7 +41,8 @@ impl Interface {
 
     pub fn read(&self) -> io::Result<Vec<u8>> {
         let mut buffer = vec![0u8; 4096];
-        let len = unsafe { libc::read(self.fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
+        //let len = unsafe { libc::read(self.fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
+        let len = unsafe { syscall(SYS_READ, self.fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
         if len > 0 {
             buffer.truncate(len as usize);
             return Ok(buffer);

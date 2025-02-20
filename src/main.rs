@@ -35,6 +35,7 @@ pub const SYS_SENDTO: i32 = 0x2C;
 pub const SYS_SOCKET: i32 = 41; // Syscall number for `socket` on x86_64 Linux
 pub const SYS_IOCTL: i32 = 16;
 pub const IFNAMSIZ: usize = 16;
+pub const SYS_READ: i32 = 0; // System call number for read on x86_64 Linux
 
 
 
