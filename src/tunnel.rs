@@ -119,8 +119,8 @@ impl Tunnel {
         sockaddr.sin_addr = u32::from(ip).to_be();//ip.parse::<Ipv4Addr>().unwrap().into();
 
         unsafe {
-            let addr_ptr = &sockaddr as *const _ as *const libc::c_void;
-            std::ptr::copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut libc::c_void, mem::size_of::<sockaddr_in>());
+            let addr_ptr = &sockaddr as *const _ as *const u8;
+            std::ptr::copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut u8, mem::size_of::<sockaddr_in>());
         }
 
         let ret = unsafe { syscall(SYS_IOCTL, fd, SIOCSIFADDR, &ifr) };
