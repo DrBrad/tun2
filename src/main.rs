@@ -17,6 +17,7 @@ pub const AF_INET: i32 = 2;
 pub const SOCK_DGRAM: i32 = 2;
 pub const SIOCSIFADDR: u64 = 0x00008916;
 pub const IFF_TUN: i16 = 0x0001;
+pub const IFF_TAP: i16 = 0x0002;
 pub const IFF_NO_PI: i16 = 0x1000;
 
 pub const IFF_UP: i32 = 0x1;
@@ -149,7 +150,8 @@ sudo tcpdump -i wlp7s0
 */
 
 fn main() -> std::io::Result<()> {
-    let tunnel = Tunnel::new("tun0")?;
+    let tunnel = Tunnel::new("tap0")?;
+    /*
     let interface = Interface::new(DEST_INTERFACE)?;
 
     let interface_clone = interface.clone();
@@ -166,10 +168,11 @@ fn main() -> std::io::Result<()> {
             }
         }
     });
+    */
 
     loop {
         let packet = tunnel.read()?;
         println!("Received packet: {:?}", &packet[..20]);
-        interface.write(&packet);
+        //interface.write(&packet);
     }
 }

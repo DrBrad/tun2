@@ -4,7 +4,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
-use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP};
+use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP, IFF_TAP};
 use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
@@ -28,7 +28,7 @@ impl Tunnel {
         let name_i8: Vec<i8> = name_bytes.iter().map(|&b| b as i8).collect();
         ifr.ifr_name[..name_i8.len()].copy_from_slice(&name_i8);
 
-        ifr.ifr_ifru.ifru_flags = IFF_TUN | IFF_NO_PI;
+        ifr.ifr_ifru.ifru_flags = IFF_TAP | IFF_NO_PI;
 
         let ret = unsafe { syscall(SYS_IOCTL, fd, 0x400454ca, &mut ifr as *mut _) };
         if ret < 0 {
@@ -56,6 +56,7 @@ impl Tunnel {
     }
 
     pub fn write(&self, packet: &[u8]) -> io::Result<()> {
+        /*
         let mut packet = packet.to_vec();
         if packet.len() < 20 {
             return Err(io::Error::new(io::ErrorKind::Other, "Packet length too small")); // Too short to be an IPv4 packet
@@ -73,6 +74,7 @@ impl Tunnel {
 
         let checksum = compute_checksum(&packet[..ihl]);
         packet[10..12].copy_from_slice(&checksum.to_be_bytes());
+        */
 
         let len = unsafe { syscall(SYS_WRITE, self.file.as_raw_fd(), packet.as_ptr() as *const _, packet.len()) };
 
