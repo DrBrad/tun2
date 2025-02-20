@@ -6,8 +6,8 @@ use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
 use std::process::Command;
 use libc::{c_int, c_short, c_ulong, ifreq, ioctl, IFF_TUN, IFF_NO_PI, O_RDWR, SOCK_RAW, AF_PACKET, ETH_P_ALL, sockaddr_ll, socket, sendto, sockaddr, AF_INET, SIOCGIFHWADDR, SOCK_DGRAM, htons, ETH_P_ARP};
-use crate::types::Types;
-use crate::{calculate_checksum, compute_checksum, NEW_DEST_IP};
+use crate::NEW_DEST_IP;
+use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
 
@@ -34,8 +34,6 @@ impl Tunnel {
         if ret < 0 {
             return Err(io::Error::last_os_error());
         }
-
-        println!("{}", ret);
 
         Ok(Self {
             file
