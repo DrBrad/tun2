@@ -5,11 +5,25 @@ use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
 use std::process::Command;
-use libc::{c_int, c_short, c_ulong, ifreq, ioctl, IFF_TUN, IFF_NO_PI, O_RDWR, SOCK_RAW, AF_PACKET, ETH_P_ALL, sockaddr_ll, socket, sendto, sockaddr, AF_INET, SIOCGIFHWADDR, SOCK_DGRAM, htons, ETH_P_ARP, SIOCSIFADDR, sockaddr_in, IFF_UP, IFF_RUNNING, SIOCSIFFLAGS};
+use libc::{ifreq, ioctl, socket, sockaddr_in};
 use crate::NEW_DEST_IP;
 use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
+
+
+pub const AF_INET: i32 = 2;
+pub const SOCK_DGRAM: i32 = 2;
+pub const SIOCSIFADDR: u64 = 0x00008916;
+pub const IFF_TUN: i16 = 0x0001;
+pub const IFF_NO_PI: i16 = 0x1000;
+
+pub const IFF_UP: i32 = 0x1;
+pub const IFF_RUNNING: i32 = 0x40;
+pub const SIOCSIFFLAGS: u64 = 0x00008914;
+
+
+
 
 //#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Tunnel {
@@ -28,7 +42,7 @@ impl Tunnel {
         let name_i8: Vec<i8> = name_bytes.iter().map(|&b| b as i8).collect();
         ifr.ifr_name[..name_i8.len()].copy_from_slice(&name_i8);
 
-        ifr.ifr_ifru.ifru_flags = (IFF_TUN | IFF_NO_PI) as c_short;
+        ifr.ifr_ifru.ifru_flags = IFF_TUN | IFF_NO_PI;
 
         let ret = unsafe { ioctl(fd, 0x400454ca, &mut ifr as *mut _) };
         if ret < 0 {
