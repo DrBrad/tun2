@@ -50,6 +50,56 @@ pub struct sockaddr_ll {
 
 
 
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct sockaddr {
+    pub sa_family: u16,
+    pub sa_data: [i8; 14],
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct __c_anonymous_ifru_map {
+    pub mem_start: c_ulong,
+    pub mem_end: c_ulong,
+    pub base_addr: i16,
+    pub irq: u8,
+    pub dma: u8,
+    pub port: u8,
+}
+
+#[repr(C)]
+pub union __c_anonymous_ifr_ifru {
+    pub ifru_addr: sockaddr,
+    pub ifru_dstaddr: sockaddr,
+    pub ifru_broadaddr: sockaddr,
+    pub ifru_netmask: sockaddr,
+    pub ifru_hwaddr: sockaddr,
+    pub ifru_flags: i16,
+    pub ifru_ifindex: i32,
+    pub ifru_metric: i32,
+    pub ifru_mtu: i32,
+    pub ifru_map: __c_anonymous_ifru_map,
+    pub ifru_slave: [i8; 16],
+    pub ifru_newname: [i8; 16],
+    pub ifru_data: *mut i8,
+}
+
+#[repr(C)]
+pub struct ifreq {
+    pub ifr_name: [i8; 16],
+    pub ifr_ifru: __c_anonymous_ifr_ifru,
+}
+
+
+
+
+
+
+
+
+
 #[repr(C)]
 #[derive(Debug)]
 struct Ifreq {
