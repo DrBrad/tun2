@@ -1,17 +1,21 @@
+mod types;
+
 use std::fs::File;
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::net::{IpAddr, Ipv4Addr, UdpSocket};
-use std::mem;
+use std::{mem, thread};
 use libc::{c_int, c_short, c_ulong, ifreq, ioctl, IFF_TUN, IFF_NO_PI, O_RDWR, SOCK_RAW, AF_PACKET, ETH_P_ALL, sockaddr_ll, socket, sendto, sockaddr};
+use crate::types::Types;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
-const DEST_INTERFACE: &str = "wlp2s0"; // Change this to your real interface
+const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
 
-const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x2]; // Replace with actual MAC address
-const SRC_MAC: [u8; 6] = [0xf0, 0x77, 0xc3, 0xbe, 0xd0, 0x70]; // Replace with your wlp7s0 MAC
+const DEST_MAC: [u8; 6] = [0x3c, 0x52, 0xa1, 0x12, 0xa4, 0x50]; // Replace with actual MAC address
+const SRC_MAC: [u8; 6] = [0x1c, 0xce, 0x51, 0x34, 0x00, 0x9f]; // Replace with your wlp7s0 MAC
 const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
-const NEW_SRC_IP: [u8; 4] = [10, 1, 12, 143];
+const NEW_DEST_IP: [u8; 4] = [10, 0, 0, 1];
+const NEW_SRC_IP: [u8; 4] = [192, 168, 0, 129];
 
 /*
 sudo ip addr add 10.0.0.1/24 dev tun0
@@ -53,6 +57,7 @@ fn read_from_tun(file: &File) -> std::io::Result<Vec<u8>> {
     buffer.truncate(len as usize);
     Ok(buffer)
 }
+
 /*
 fn write_to_interface(socket_fd: RawFd, packet: &[u8], dest_ifindex: i32) -> std::io::Result<()> {
     let mut sockaddr: sockaddr_ll = unsafe { mem::zeroed() };
@@ -79,6 +84,22 @@ fn write_to_interface(socket_fd: RawFd, packet: &[u8], dest_ifindex: i32) -> std
 }
 */
 
+fn write_to_tun(file: &File, packet: &[u8]) -> std::io::Result<()> {
+    let mut modified_packet = packet.to_vec();
+    modify_ip_packet_2(&mut modified_packet); // Change the source IP
+
+    //println!("Sending packet with length: {}", packet.len());
+    //let len = unsafe { libc::write(file.as_raw_fd(), packet.as_ptr() as *const _, packet.len()) };
+    let len = unsafe { libc::write(file.as_raw_fd(), modified_packet.as_ptr() as *const _, modified_packet.len()) };
+    //println!("Length: {}", len);
+
+    if len < 0 {
+        println!("{}", std::io::Error::last_os_error());
+        return Err(std::io::Error::last_os_error());
+    }
+
+    Ok(())
+}
 
 
 
@@ -126,6 +147,27 @@ fn modify_ip_packet(packet: &mut [u8]) {
 }
 
 
+fn modify_ip_packet_2(packet: &mut [u8]) {
+    if packet.len() < 20 {
+        return; // Too short to be an IPv4 packet
+    }
+
+    let ihl = (packet[0] & 0x0F) as usize * 4; // Internet Header Length (IHL)
+    if ihl < 20 || ihl > packet.len() {
+        return; // Invalid IHL
+    }
+
+    // Modify source IP (bytes 12-15 in IPv4 header)
+    packet[16..20].copy_from_slice(&NEW_DEST_IP);
+
+    // Zero out checksum before recalculating
+    packet[10] = 0;
+    packet[11] = 0;
+
+    // Recalculate checksum
+    let checksum = compute_checksum(&packet[..ihl]);
+    packet[10..12].copy_from_slice(&checksum.to_be_bytes());
+}
 
 
 
@@ -197,6 +239,14 @@ fn fix_ip_checksum(packet: &mut [u8]) {
 
 
 
+fn create_raw_socket() -> std::io::Result<RawFd> {
+    let socket_fd = unsafe { socket(AF_PACKET, SOCK_RAW, (ETH_P_ALL as u16).to_be() as i32) };
+    if socket_fd < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(socket_fd)
+}
+
 
 fn get_interface_index(interface: &str) -> std::io::Result<i32> {
     let socket_fd = unsafe { socket(AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be() as i32) };
@@ -226,16 +276,70 @@ fn main() -> std::io::Result<()> {
     let dest_ifindex = get_interface_index(DEST_INTERFACE)?;
     println!("Forwarding packets to interface index: {}", dest_ifindex);
 
+    let socket_fd = create_raw_socket()?;
+    /*
     let socket_fd = unsafe { socket(AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be() as i32) };
     if socket_fd < 0 {
         return Err(std::io::Error::last_os_error());
     }
+    */
+
+    /*
+    thread::spawn(move || {
+        let mut buffer = vec![0u8; 4096];
+        let len = unsafe { libc::read(socket_fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
+        println!("Forwarded packet to TUN: {}", len);
+        if len > 0 {
+            buffer.truncate(len as usize);
+
+            if buffer.len() > 14 {
+                //write_to_tun(&tun_file, &buffer)?;//[14..])?;
+            }
+
+        }
+    });*/
+
+    let tun_file_clone = tun_file.try_clone()?;
+    thread::spawn(move || {
+        loop {
+            let mut buffer = vec![0u8; 4096];
+            let len = unsafe { libc::read(socket_fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
+            if len > 0 {
+                buffer.truncate(len as usize);
+
+
+                if buffer.len() > 14 {
+                    write_to_tun(&tun_file_clone, &buffer[14..]);
+                }
+
+                /*
+
+                let _type = Types::get_type_from_code(u16::from_be_bytes([buffer[12], buffer[13]])).unwrap();
+
+                match _type {
+                    Types::IPv4 => {
+                        //println!("WLP: {}", Protocols::get_protocol_from_code(buffer[23]).unwrap().to_string());
+
+                        if buffer.len() > 14 {
+                            write_to_tun(&tun_file_clone, &buffer[14..]);
+                        }
+                    }
+                    Types::Arp => {}
+                    Types::IPv6 => {
+                        //println!("WLP: {}", Protocols::get_protocol_from_code(buffer[20]).unwrap().to_string());
+                    }
+                    Types::Broadcast => {}
+                }*/
+
+            }
+        }
+    });
 
     loop {
         let packet = read_from_tun(&tun_file)?;
         println!("Received packet: {:?}", &packet[..20]);
 
-        send_packet(socket_fd, dest_ifindex, &packet)?;
+        send_packet(socket_fd.clone(), dest_ifindex, &packet)?;
 
         //AT THIS POINT WE HAVE IPHeader and on of packet, we should be able to write it directly
         //to a raw socket and expect a response
@@ -244,5 +348,8 @@ fn main() -> std::io::Result<()> {
         write_to_interface(socket_fd, &packet, dest_ifindex)?;
         println!("Forwarded packet to {}", DEST_INTERFACE);
         */
+
+
+        //println!("LOOP");
     }
 }
