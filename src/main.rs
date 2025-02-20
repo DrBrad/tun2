@@ -34,6 +34,21 @@ pub const SIOCGIFADDR: u64 = 0x8915; // ioctl command for getting IP address
 
 
 
+#[repr(C)]
+#[derive(Debug)]
+pub struct sockaddr_ll {
+    pub sll_family: u16,
+    pub sll_protocol: u16,
+    pub sll_ifindex: i32,
+    pub sll_hatype: u16,
+    pub sll_pkttype: u8,
+    pub sll_halen: u8,
+    pub sll_addr: [u8; 8],
+}
+
+
+
+
 
 #[repr(C)]
 #[derive(Debug)]
