@@ -2,8 +2,8 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
-use libc::{ioctl, sendto, sockaddr, socket};
-use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq};
+use libc::{ioctl, sockaddr, socket};
+use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO};
 use crate::utils::ip_utils::compute_checksum;
 
 
@@ -89,15 +89,17 @@ impl Interface {
         };
 
         let ret = unsafe {
-            sendto(
+            syscall(
+                SYS_SENDTO,
                 self.fd,
                 eth_frame.as_ptr() as *const _,
                 eth_frame.len(),
-                0,
+                0,  // flags
                 &sll as *const _ as *const sockaddr,
                 mem::size_of::<sockaddr_ll>() as u32,
             )
         };
+
 
         if ret < 0 {
             return Err(io::Error::last_os_error());

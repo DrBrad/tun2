@@ -31,6 +31,7 @@ pub const SOCK_RAW: i32 = 3;
 
 pub const SIOCGIFADDR: u64 = 0x8915; // ioctl command for getting IP address
 
+pub const SYS_SENDTO: i32 = 0x2C;
 
 
 
@@ -117,7 +118,9 @@ struct sockaddr_in {
     sin_zero: [i8; 8],
 }
 
-
+extern "C" {
+    fn syscall(number: i32, ...) -> i32;
+}
 
 
 
