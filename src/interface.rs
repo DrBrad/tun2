@@ -27,7 +27,6 @@ struct sockaddr_in {
     sin_zero: [i8; 8],
 }
 
-
 #[derive(Clone)]
 pub struct Interface {
     interface: String,

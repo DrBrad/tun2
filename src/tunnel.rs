@@ -131,30 +131,6 @@ impl Tunnel {
         Ok(())
     }
 
-    /*
-    fn set_mac(interface: &str, mac: [u8; 6]) -> io::Result<()> {
-        let sock_fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
-        if sock_fd < 0 {
-            return Err(io::Error::last_os_error());
-        }
-
-        let mut ifr: ifreq = unsafe { mem::zeroed() };
-        let name_bytes = interface.as_bytes();
-        ifr.ifr_name[..name_bytes.len()].copy_from_slice(name_bytes);
-
-        unsafe {
-            std::ptr::copy_nonoverlapping(mac.as_ptr(), ifr.ifr_ifru.ifru_hwaddr.sa_data.as_mut_ptr() as *mut u8, 6);
-        }
-
-        let ret = unsafe { ioctl(sock_fd, SIOCSIFHWADDR, &ifr) };
-        if ret < 0 {
-            return Err(io::Error::last_os_error());
-        }
-
-        Ok(())
-    }
-    */
-
     fn bring_up(interface: &str) -> io::Result<()> {
         let sock_fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
         if sock_fd < 0 {
