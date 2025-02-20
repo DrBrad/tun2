@@ -5,7 +5,7 @@ use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
 use std::process::Command;
-use libc::{c_int, c_short, c_ulong, ifreq, ioctl, IFF_TUN, IFF_NO_PI, O_RDWR, SOCK_RAW, AF_PACKET, ETH_P_ALL, sockaddr_ll, socket, sendto, sockaddr, AF_INET, SIOCGIFHWADDR, SOCK_DGRAM, htons, ETH_P_ARP};
+use libc::{c_int, c_short, c_ulong, ifreq, ioctl, IFF_TUN, IFF_NO_PI, O_RDWR, SOCK_RAW, AF_PACKET, ETH_P_ALL, sockaddr_ll, socket, sendto, sockaddr, AF_INET, SIOCGIFHWADDR, SOCK_DGRAM, htons, ETH_P_ARP, SIOCSIFADDR, sockaddr_in, IFF_UP, IFF_RUNNING, SIOCSIFFLAGS};
 use crate::NEW_DEST_IP;
 use crate::utils::ip_utils::compute_checksum;
 
@@ -34,6 +34,9 @@ impl Tunnel {
         if ret < 0 {
             return Err(io::Error::last_os_error());
         }
+
+        Self::set_ip(name, Ipv4Addr::new(10, 0, 0, 1))?;
+        Self::bring_up(name)?;
 
         Ok(Self {
             file
@@ -91,5 +94,85 @@ impl Tunnel {
         Ok(Self {
             file: new_file
         })
+    }
+
+
+
+    fn set_ip(interface: &str, ip: Ipv4Addr) -> io::Result<()> {
+        let sock_fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
+        if sock_fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        let mut ifr: ifreq = unsafe { mem::zeroed() };
+        //let name_bytes = interface.as_bytes();
+        //ifr.ifr_name[..name_bytes.len()].copy_from_slice(name_bytes);
+
+
+        let name_bytes = interface.as_bytes();
+        let name_i8: Vec<i8> = name_bytes.iter().map(|&b| b as i8).collect();
+        ifr.ifr_name[..name_i8.len()].copy_from_slice(&name_i8);
+
+        // Convert string IP to sockaddr
+        let mut sockaddr: sockaddr_in = unsafe { mem::zeroed() };
+        sockaddr.sin_family = AF_INET as u16;
+        sockaddr.sin_addr.s_addr = u32::from(ip).to_be();//ip.parse::<Ipv4Addr>().unwrap().into();
+
+        unsafe {
+            let addr_ptr = &sockaddr as *const _ as *const libc::c_void;
+            std::ptr::copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut libc::c_void, mem::size_of::<sockaddr_in>());
+        }
+
+        let ret = unsafe { ioctl(sock_fd, SIOCSIFADDR, &ifr) };
+        if ret < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        Ok(())
+    }
+
+    /*
+    fn set_mac(interface: &str, mac: [u8; 6]) -> io::Result<()> {
+        let sock_fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
+        if sock_fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        let mut ifr: ifreq = unsafe { mem::zeroed() };
+        let name_bytes = interface.as_bytes();
+        ifr.ifr_name[..name_bytes.len()].copy_from_slice(name_bytes);
+
+        unsafe {
+            std::ptr::copy_nonoverlapping(mac.as_ptr(), ifr.ifr_ifru.ifru_hwaddr.sa_data.as_mut_ptr() as *mut u8, 6);
+        }
+
+        let ret = unsafe { ioctl(sock_fd, SIOCSIFHWADDR, &ifr) };
+        if ret < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        Ok(())
+    }
+    */
+
+    fn bring_up(interface: &str) -> io::Result<()> {
+        let sock_fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
+        if sock_fd < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        let mut ifr: ifreq = unsafe { mem::zeroed() };
+        let name_bytes = interface.as_bytes();
+        let name_i8: Vec<i8> = name_bytes.iter().map(|&b| b as i8).collect();
+        ifr.ifr_name[..name_i8.len()].copy_from_slice(&name_i8);
+
+        ifr.ifr_ifru.ifru_flags = (IFF_UP | IFF_RUNNING) as i16;
+
+        let ret = unsafe { ioctl(sock_fd, SIOCSIFFLAGS, &ifr) };
+        if ret < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        Ok(())
     }
 }

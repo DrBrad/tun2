@@ -10,12 +10,12 @@ use std::thread;
 use crate::interface::Interface;
 use crate::tunnel::Tunnel;
 
-const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
+const DEST_INTERFACE: &str = "wlp2s0"; // Change this to your real interface
 
-const DEST_MAC: [u8; 6] = [0x3c, 0x52, 0xa1, 0x12, 0xa4, 0x50]; // Replace with actual MAC address
+const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x02]; // Replace with actual MAC address
 const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
 const NEW_DEST_IP: [u8; 4] = [10, 0, 0, 1];
-const NEW_SRC_IP: [u8; 4] = [192, 168, 0, 129];
+const NEW_SRC_IP: [u8; 4] = [10, 1, 12, 143];
 
 /*
 sudo ip addr add 10.0.0.1/24 dev tun0
