@@ -1,18 +1,19 @@
 mod types;
+mod gateway;
 
 use std::fs::File;
 use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{mem, thread};
-use libc::{c_int, c_short, c_ulong, ifreq, ioctl, IFF_TUN, IFF_NO_PI, O_RDWR, SOCK_RAW, AF_PACKET, ETH_P_ALL, sockaddr_ll, socket, sendto, sockaddr};
+use std::process::Command;
+use libc::{c_int, c_short, c_ulong, ifreq, ioctl, IFF_TUN, IFF_NO_PI, O_RDWR, SOCK_RAW, AF_PACKET, ETH_P_ALL, sockaddr_ll, socket, sendto, sockaddr, AF_INET, SIOCGIFHWADDR, SOCK_DGRAM, htons, ETH_P_ARP};
 use crate::types::Types;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
 const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
 
 const DEST_MAC: [u8; 6] = [0x3c, 0x52, 0xa1, 0x12, 0xa4, 0x50]; // Replace with actual MAC address
-const SRC_MAC: [u8; 6] = [0x1c, 0xce, 0x51, 0x34, 0x00, 0x9f]; // Replace with your wlp7s0 MAC
 const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
 const NEW_DEST_IP: [u8; 4] = [10, 0, 0, 1];
 const NEW_SRC_IP: [u8; 4] = [192, 168, 0, 129];
@@ -171,13 +172,13 @@ fn modify_ip_packet_2(packet: &mut [u8]) {
 
 
 
-fn send_packet(socket_fd: RawFd, interface_index: i32, mut packet: &[u8]) -> std::io::Result<()> {
+fn send_packet(socket_fd: RawFd, interface_index: i32, src_mac: [u8; 6], mut packet: &[u8]) -> std::io::Result<()> {
     let mut modified_packet = packet.to_vec();
     modify_ip_packet(&mut modified_packet); // Change the source IP
 
     let mut eth_frame = Vec::new();
     eth_frame.extend_from_slice(&DEST_MAC);
-    eth_frame.extend_from_slice(&SRC_MAC);
+    eth_frame.extend_from_slice(&src_mac);
     eth_frame.extend_from_slice(&ETHERTYPE_IPV4);
     //packet.to_vec().splice(12..16, Ipv4Addr::from([10, 1, 12, 143]).octets());
     eth_frame.extend_from_slice(&modified_packet); // Append IP packet
@@ -269,6 +270,52 @@ fn get_interface_index(interface: &str) -> std::io::Result<i32> {
     Ok(unsafe { ifr.ifr_ifru.ifru_ifindex })
 }
 
+
+
+
+
+
+
+
+fn get_mac_address(interface: &str) -> std::io::Result<[u8; 6]> {
+    let fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
+    if fd < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+
+    let mut ifr: ifreq = unsafe { mem::zeroed() };
+
+    // Convert &str to [i8; IFNAMSIZ] (interface name)
+    let mut name_bytes = [0i8; libc::IFNAMSIZ];
+    for (i, &b) in interface.as_bytes().iter().enumerate() {
+        name_bytes[i] = b as i8;
+    }
+    ifr.ifr_name.copy_from_slice(&name_bytes);
+
+    let ret = unsafe { ioctl(fd, SIOCGIFHWADDR, &mut ifr) };
+    if ret < 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+
+    unsafe { libc::close(fd) };
+
+    let mac = unsafe { ifr.ifr_ifru.ifru_hwaddr.sa_data };
+    Ok([mac[0] as u8, mac[1] as u8, mac[2] as u8, mac[3] as u8, mac[4] as u8, mac[5] as u8])
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 fn main() -> std::io::Result<()> {
     let tun_file = create_tun_interface("tun0")?;
     println!("TUN interface created: tun0");
@@ -277,27 +324,10 @@ fn main() -> std::io::Result<()> {
     println!("Forwarding packets to interface index: {}", dest_ifindex);
 
     let socket_fd = create_raw_socket()?;
-    /*
-    let socket_fd = unsafe { socket(AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be() as i32) };
-    if socket_fd < 0 {
-        return Err(std::io::Error::last_os_error());
-    }
-    */
 
-    /*
-    thread::spawn(move || {
-        let mut buffer = vec![0u8; 4096];
-        let len = unsafe { libc::read(socket_fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
-        println!("Forwarded packet to TUN: {}", len);
-        if len > 0 {
-            buffer.truncate(len as usize);
 
-            if buffer.len() > 14 {
-                //write_to_tun(&tun_file, &buffer)?;//[14..])?;
-            }
-
-        }
-    });*/
+    let src_mac = get_mac_address(DEST_INTERFACE)?;
+    //let dst_mac = get_router_mac(DEST_INTERFACE).unwrap();
 
     let tun_file_clone = tun_file.try_clone()?;
     thread::spawn(move || {
@@ -339,7 +369,7 @@ fn main() -> std::io::Result<()> {
         let packet = read_from_tun(&tun_file)?;
         println!("Received packet: {:?}", &packet[..20]);
 
-        send_packet(socket_fd.clone(), dest_ifindex, &packet)?;
+        send_packet(socket_fd.clone(), dest_ifindex, src_mac, &packet)?;
 
         //AT THIS POINT WE HAVE IPHeader and on of packet, we should be able to write it directly
         //to a raw socket and expect a response
