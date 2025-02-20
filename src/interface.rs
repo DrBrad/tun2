@@ -3,11 +3,10 @@ use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
 use libc::{ifreq, ioctl, sendto, sockaddr, sockaddr_ll, socket};
-use crate::{Ifreq, AF_INET, AF_PACKET, DEST_MAC, ETHERTYPE_IPV4, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW};
+use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR};
 use crate::utils::ip_utils::compute_checksum;
 
 
-const SIOCGIFADDR: u64 = 0x8915; // ioctl command for getting IP address
 
 #[derive(Clone)]
 pub struct Interface {

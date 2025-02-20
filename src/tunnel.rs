@@ -6,7 +6,7 @@ use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
 use std::process::Command;
 use libc::{ifreq, ioctl, socket, sockaddr_in};
-use crate::{AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, NEW_DEST_IP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM};
+use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM};
 use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";

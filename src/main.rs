@@ -29,6 +29,7 @@ pub const ETH_P_ALL: i32 = 0x0003;
 pub const SIOCGIFHWADDR: u64 = 0x00008927;
 pub const SOCK_RAW: i32 = 3;
 
+pub const SIOCGIFADDR: u64 = 0x8915; // ioctl command for getting IP address
 
 
 
