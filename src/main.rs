@@ -9,13 +9,13 @@ use libc::{c_int, c_short, c_ulong, ifreq, ioctl, IFF_TUN, IFF_NO_PI, O_RDWR, SO
 use crate::types::Types;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
-const DEST_INTERFACE: &str = "wlp2s0"; // Change this to your real interface
+const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
 
-const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x2]; // Replace with actual MAC address
-const SRC_MAC: [u8; 6] = [0xf0, 0x77, 0xc3, 0xbe, 0xd0, 0x70]; // Replace with your wlp7s0 MAC
+const DEST_MAC: [u8; 6] = [0x3c, 0x52, 0xa1, 0x12, 0xa4, 0x50]; // Replace with actual MAC address
+const SRC_MAC: [u8; 6] = [0x1c, 0xce, 0x51, 0x34, 0x00, 0x9f]; // Replace with your wlp7s0 MAC
 const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
 const NEW_DEST_IP: [u8; 4] = [10, 0, 0, 1];
-const NEW_SRC_IP: [u8; 4] = [10, 1, 12, 143];
+const NEW_SRC_IP: [u8; 4] = [192, 168, 0, 129];
 
 /*
 sudo ip addr add 10.0.0.1/24 dev tun0
