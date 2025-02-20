@@ -5,8 +5,8 @@ use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
 use std::process::Command;
-use libc::{ioctl, socket, sockaddr_in};
-use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq};
+use libc::{ioctl, socket};
+use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in};
 use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
@@ -118,7 +118,7 @@ impl Tunnel {
         // Convert string IP to sockaddr
         let mut sockaddr: sockaddr_in = unsafe { mem::zeroed() };
         sockaddr.sin_family = AF_INET as u16;
-        sockaddr.sin_addr.s_addr = u32::from(ip).to_be();//ip.parse::<Ipv4Addr>().unwrap().into();
+        sockaddr.sin_addr = u32::from(ip).to_be();//ip.parse::<Ipv4Addr>().unwrap().into();
 
         unsafe {
             let addr_ptr = &sockaddr as *const _ as *const libc::c_void;
