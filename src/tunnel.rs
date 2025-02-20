@@ -4,7 +4,7 @@ use std::os::unix::io::{AsRawFd, RawFd};
 use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
-use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL, SYS_READ};
+use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP};
 use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
@@ -74,7 +74,7 @@ impl Tunnel {
         let checksum = compute_checksum(&packet[..ihl]);
         packet[10..12].copy_from_slice(&checksum.to_be_bytes());
 
-        let len = unsafe { libc::write(self.file.as_raw_fd(), packet.as_ptr() as *const _, packet.len()) };
+        let len = unsafe { syscall(SYS_WRITE, self.file.as_raw_fd(), packet.as_ptr() as *const _, packet.len()) };
 
         if len < 0 {
             return Err(io::Error::last_os_error());
@@ -84,7 +84,7 @@ impl Tunnel {
     }
 
     pub fn try_clone(&self) -> io::Result<Self> {
-        let fd = unsafe { libc::dup(self.file.as_raw_fd()) };
+        let fd = unsafe { syscall(SYS_DUP, self.file.as_raw_fd()) };
         if fd == -1 {
             return Err(io::Error::last_os_error());
         }

@@ -2,7 +2,7 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
-use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ, SYS_READ};
+use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ, SYS_READ, SYS_CLOSE};
 use crate::utils::ip_utils::compute_checksum;
 
 
@@ -41,7 +41,6 @@ impl Interface {
 
     pub fn read(&self) -> io::Result<Vec<u8>> {
         let mut buffer = vec![0u8; 4096];
-        //let len = unsafe { libc::read(self.fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
         let len = unsafe { syscall(SYS_READ, self.fd, buffer.as_mut_ptr() as *mut _, buffer.len()) };
         if len > 0 {
             buffer.truncate(len as usize);
@@ -125,7 +124,7 @@ impl Interface {
             return Err(io::Error::last_os_error());
         }
 
-        unsafe { libc::close(fd) };
+        unsafe { syscall(SYS_CLOSE, fd) };
 
         Ok(unsafe { ifr.ifr_ifru.ifru_ifindex })
     }
@@ -150,7 +149,7 @@ impl Interface {
             return Err(io::Error::last_os_error());
         }
 
-        unsafe { libc::close(fd) };
+        unsafe { syscall(SYS_CLOSE, fd) };
 
         let mac = unsafe { ifr.ifr_ifru.ifru_hwaddr.sa_data };
         Ok([mac[0] as u8, mac[1] as u8, mac[2] as u8, mac[3] as u8, mac[4] as u8, mac[5] as u8])
@@ -179,18 +178,14 @@ impl Interface {
         let res = unsafe { syscall(SYS_IOCTL, fd, SIOCGIFADDR, &mut ifr as *mut Ifreq) };
 
         if res < 0 {
-            unsafe {
-                libc::close(fd);
-            }
+            unsafe { syscall(SYS_CLOSE, fd) };
             return Err(io::Error::last_os_error());
         }
 
         // Extract the IP address from the sockaddr_in structure
         let sin_addr = ifr.ifr_addr.sin_addr;
 
-        unsafe {
-            libc::close(fd);
-        }
+        unsafe { syscall(SYS_CLOSE, fd) };
 
         Ok(Ipv4Addr::new(
             (sin_addr & 0xFF) as u8,
