@@ -35,7 +35,7 @@ impl Tunnel {
             return Err(io::Error::last_os_error());
         }
 
-        Self::set_ip(name, Ipv4Addr::new(10, 0, 0, 1))?;
+        Self::set_ip(name, NEW_DEST_IP)?;
         Self::bring_up(name)?;
 
         Ok(Self {
@@ -66,7 +66,7 @@ impl Tunnel {
             return Err(io::Error::new(io::ErrorKind::Other, "Packet has invalid IHL")); // Too short to be an IPv4 packet
         }
 
-        packet[16..20].copy_from_slice(&NEW_DEST_IP);
+        packet[16..20].copy_from_slice(&NEW_DEST_IP.octets());
 
         packet[10] = 0;
         packet[11] = 0;

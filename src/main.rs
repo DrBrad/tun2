@@ -1,10 +1,10 @@
 //mod types;
-mod gateway;
 mod tunnel;
 mod interface;
 mod utils;
 
 use std::io::{Read, Write};
+use std::net::Ipv4Addr;
 use std::os::unix::io::AsRawFd;
 use std::thread;
 use crate::interface::Interface;
@@ -14,8 +14,7 @@ const DEST_INTERFACE: &str = "wlp2s0"; // Change this to your real interface
 
 const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x02]; // Replace with actual MAC address
 const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
-const NEW_DEST_IP: [u8; 4] = [10, 0, 0, 1];
-const NEW_SRC_IP: [u8; 4] = [10, 1, 12, 143];
+const NEW_DEST_IP: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 1);
 
 /*
 sudo ip addr add 10.0.0.1/24 dev tun0

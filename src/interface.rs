@@ -1,14 +1,39 @@
-use std::{io, mem};
+use std::{io, mem, ptr};
+use std::ffi::CString;
+use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
 use libc::{ifreq, ioctl, sendto, sockaddr, sockaddr_ll, socket, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW};
-use crate::{DEST_MAC, ETHERTYPE_IPV4, NEW_SRC_IP};
+use crate::{DEST_MAC, ETHERTYPE_IPV4};
 use crate::utils::ip_utils::compute_checksum;
+
+
+const SIOCGIFADDR: u64 = 0x8915; // ioctl command for getting IP address
+
+// Structure to store interface request (ifreq) data
+#[repr(C)]
+#[derive(Debug)]
+struct Ifreq {
+    ifr_name: [i8; 16],
+    ifr_addr: sockaddr_in,
+}
+
+// Structure to store sockaddr_in (IPv4 address)
+#[repr(C)]
+#[derive(Debug)]
+struct sockaddr_in {
+    sin_family: u16,
+    sin_port: u16,
+    sin_addr: u32,
+    sin_zero: [i8; 8],
+}
+
 
 #[derive(Clone)]
 pub struct Interface {
     interface: String,
     interface_index: i32,
     source_mac: [u8; 6],
+    source_ip: Ipv4Addr,
     fd: RawFd
 }
 
@@ -23,11 +48,13 @@ impl Interface {
 
         let interface_index = Self::get_interface_index(interface)?;
         let source_mac = Self::get_mac_address(interface)?;
+        let source_ip = Self::get_ip_address(interface)?;
 
         Ok(Self {
             interface: interface.to_string(),
             interface_index,
             source_mac,
+            source_ip,
             fd
         })
     }
@@ -55,7 +82,7 @@ impl Interface {
             return Err(io::Error::new(io::ErrorKind::Other, "Packet has invalid IHL")); // Too short to be an IPv4 packet
         }
 
-        packet[12..16].copy_from_slice(&NEW_SRC_IP);
+        packet[12..16].copy_from_slice(&self.source_ip.octets());
 
         packet[10] = 0;
         packet[11] = 0;
@@ -144,5 +171,54 @@ impl Interface {
 
         let mac = unsafe { ifr.ifr_ifru.ifru_hwaddr.sa_data };
         Ok([mac[0] as u8, mac[1] as u8, mac[2] as u8, mac[3] as u8, mac[4] as u8, mac[5] as u8])
+    }
+
+
+    fn get_ip_address(interface: &str) -> io::Result<Ipv4Addr> {
+        // Open a socket to interact with the network interface
+        let sock = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
+
+        if sock < 0 {
+            return Err(io::Error::last_os_error());
+        }
+
+        let mut ifr: Ifreq = unsafe { mem::zeroed() };
+        let cstr = CString::new(interface).unwrap();
+        let name = cstr.as_bytes_with_nul();
+
+        // Copy the interface name to the ifr_name field of Ifreq
+        unsafe {
+            ptr::copy_nonoverlapping(
+                name.as_ptr(),
+                ifr.ifr_name.as_mut_ptr() as *mut u8, // Cast to *mut u8 here
+                name.len(),
+            );
+        }
+
+        // Perform the ioctl to get the IP address
+        let res = unsafe {
+            libc::ioctl(sock, SIOCGIFADDR as _, &mut ifr as *mut Ifreq)
+        };
+
+        if res < 0 {
+            unsafe {
+                libc::close(sock);
+            }
+            return Err(io::Error::last_os_error());
+        }
+
+        // Extract the IP address from the sockaddr_in structure
+        let sin_addr = ifr.ifr_addr.sin_addr;
+
+        unsafe {
+            libc::close(sock);
+        }
+
+        Ok(Ipv4Addr::new(
+            (sin_addr & 0xFF) as u8,
+            ((sin_addr >> 8) & 0xFF) as u8,
+            ((sin_addr >> 16) & 0xFF) as u8,
+            ((sin_addr >> 24) & 0xFF) as u8,
+        ))
     }
 }
