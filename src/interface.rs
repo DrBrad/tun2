@@ -2,8 +2,8 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
-use libc::{ioctl, sockaddr};
-use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET};
+use libc::{sockaddr};
+use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL};
 use crate::utils::ip_utils::compute_checksum;
 
 
@@ -120,7 +120,7 @@ impl Interface {
         let name_i8: Vec<i8> = name_bytes.iter().map(|&b| b as i8).collect();
         ifr.ifr_name[..name_i8.len()].copy_from_slice(&name_i8);
 
-        let ret = unsafe { ioctl(fd, 0x8933, &mut ifr as *mut _) }; // SIOCGIFINDEX
+        let ret = unsafe { syscall(SYS_IOCTL, fd, 0x8933, &mut ifr as *mut _) }; // SIOCGIFINDEX
         if ret < 0 {
             return Err(io::Error::last_os_error());
         }
@@ -145,7 +145,7 @@ impl Interface {
         }
         ifr.ifr_name.copy_from_slice(&name_bytes);
 
-        let ret = unsafe { ioctl(fd, SIOCGIFHWADDR, &mut ifr) };
+        let ret = unsafe { syscall(SYS_IOCTL, fd, SIOCGIFHWADDR, &mut ifr) };
         if ret < 0 {
             return Err(io::Error::last_os_error());
         }
@@ -159,9 +159,9 @@ impl Interface {
 
     fn get_ip_address(interface: &str) -> io::Result<Ipv4Addr> {
         // Open a socket to interact with the network interface
-        let sock = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
+        let fd = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
 
-        if sock < 0 {
+        if fd < 0 {
             return Err(io::Error::last_os_error());
         }
 
@@ -178,14 +178,11 @@ impl Interface {
             );
         }
 
-        // Perform the ioctl to get the IP address
-        let res = unsafe {
-            libc::ioctl(sock, SIOCGIFADDR as _, &mut ifr as *mut Ifreq)
-        };
+        let res = unsafe { syscall(SYS_IOCTL, fd, SIOCGIFADDR, &mut ifr as *mut Ifreq) };
 
         if res < 0 {
             unsafe {
-                libc::close(sock);
+                libc::close(fd);
             }
             return Err(io::Error::last_os_error());
         }
@@ -194,7 +191,7 @@ impl Interface {
         let sin_addr = ifr.ifr_addr.sin_addr;
 
         unsafe {
-            libc::close(sock);
+            libc::close(fd);
         }
 
         Ok(Ipv4Addr::new(
