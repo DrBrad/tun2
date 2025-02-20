@@ -2,8 +2,8 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
-use libc::{ioctl, sockaddr, socket};
-use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO};
+use libc::{ioctl, sockaddr};
+use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET};
 use crate::utils::ip_utils::compute_checksum;
 
 
@@ -20,7 +20,8 @@ pub struct Interface {
 impl Interface {
 
     pub fn new(interface: &str) -> io::Result<Self> {
-        let fd = unsafe { socket(AF_PACKET, SOCK_RAW, (ETH_P_ALL as u16).to_be() as i32) };
+        let fd = unsafe { syscall(SYS_SOCKET, AF_PACKET, SOCK_RAW, (ETH_P_ALL as u16).to_be() as i32) };
+        //let fd = unsafe { socket(AF_PACKET, SOCK_RAW, (ETH_P_ALL as u16).to_be() as i32) };
         //let fd = unsafe { socket(AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be()) };
         if fd < 0 {
             return Err(io::Error::last_os_error());
@@ -109,7 +110,7 @@ impl Interface {
     }
 
     fn get_interface_index(interface: &str) -> io::Result<i32> {
-        let fd = unsafe { socket(AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be()) };
+        let fd = unsafe { syscall(SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be()) };
         if fd < 0 {
             return Err(io::Error::last_os_error());
         }
@@ -130,7 +131,7 @@ impl Interface {
     }
 
     fn get_mac_address(interface: &str) -> io::Result<[u8; 6]> {
-        let fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
+        let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
         if fd < 0 {
             return Err(io::Error::last_os_error());
         }

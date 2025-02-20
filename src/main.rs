@@ -33,6 +33,9 @@ pub const SIOCGIFADDR: u64 = 0x8915; // ioctl command for getting IP address
 
 pub const SYS_SENDTO: i32 = 0x2C;
 
+const SYS_SOCKET: i32 = 41; // Syscall number for `socket` on x86_64 Linux
+
+
 
 
 #[repr(C)]

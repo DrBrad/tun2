@@ -5,8 +5,8 @@ use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{io, mem, thread};
 use std::os::fd::FromRawFd;
 use std::process::Command;
-use libc::{ioctl, socket};
-use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in};
+use libc::{ioctl};
+use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL};
 use crate::utils::ip_utils::compute_checksum;
 
 const TUN_DEVICE: &str = "/dev/net/tun";
@@ -101,8 +101,8 @@ impl Tunnel {
 
 
     fn set_ip(interface: &str, ip: Ipv4Addr) -> io::Result<()> {
-        let sock_fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
-        if sock_fd < 0 {
+        let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
+        if fd < 0 {
             return Err(io::Error::last_os_error());
         }
 
@@ -125,7 +125,7 @@ impl Tunnel {
             std::ptr::copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut libc::c_void, mem::size_of::<sockaddr_in>());
         }
 
-        let ret = unsafe { ioctl(sock_fd, SIOCSIFADDR, &ifr) };
+        let ret = unsafe { ioctl(fd, SIOCSIFADDR, &ifr) };
         if ret < 0 {
             return Err(io::Error::last_os_error());
         }
@@ -134,8 +134,8 @@ impl Tunnel {
     }
 
     fn bring_up(interface: &str) -> io::Result<()> {
-        let sock_fd = unsafe { socket(AF_INET, SOCK_DGRAM, 0) };
-        if sock_fd < 0 {
+        let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
+        if fd < 0 {
             return Err(io::Error::last_os_error());
         }
 
@@ -146,7 +146,7 @@ impl Tunnel {
 
         ifr.ifr_ifru.ifru_flags = (IFF_UP | IFF_RUNNING) as i16;
 
-        let ret = unsafe { ioctl(sock_fd, SIOCSIFFLAGS, &ifr) };
+        let ret = unsafe { ioctl(fd, SIOCSIFFLAGS, &ifr) };
         if ret < 0 {
             return Err(io::Error::last_os_error());
         }
