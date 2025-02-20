@@ -63,14 +63,11 @@ impl Tunnel {
             return Err(io::Error::new(io::ErrorKind::Other, "Packet has invalid IHL")); // Too short to be an IPv4 packet
         }
 
-        // Modify source IP (bytes 12-15 in IPv4 header)
         packet[16..20].copy_from_slice(&NEW_DEST_IP);
 
-        // Zero out checksum before recalculating
         packet[10] = 0;
         packet[11] = 0;
 
-        // Recalculate checksum
         let checksum = compute_checksum(&packet[..ihl]);
         packet[10..12].copy_from_slice(&checksum.to_be_bytes());
 

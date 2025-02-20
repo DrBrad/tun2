@@ -31,11 +31,3 @@ pub fn calculate_checksum(data: &[u8]) -> u16 {
     }
     !(sum as u16)
 }
-
-pub fn fix_ip_checksum(packet: &mut [u8]) {
-    packet[10] = 0x00;
-    packet[11] = 0x00;
-    let checksum = calculate_checksum(&packet[0..20]);
-    packet[10] = (checksum >> 8) as u8;
-    packet[11] = (checksum & 0xFF) as u8;
-}
