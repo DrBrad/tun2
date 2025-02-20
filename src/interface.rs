@@ -2,8 +2,7 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
-use libc::{sockaddr};
-use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL};
+use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ};
 use crate::utils::ip_utils::compute_checksum;
 
 
@@ -96,7 +95,7 @@ impl Interface {
                 eth_frame.as_ptr() as *const _,
                 eth_frame.len(),
                 0,  // flags
-                &sll as *const _ as *const sockaddr,
+                &sll as *const _ as *const _,
                 mem::size_of::<sockaddr_ll>() as u32,
             )
         };
@@ -139,7 +138,7 @@ impl Interface {
         let mut ifr: ifreq = unsafe { mem::zeroed() };
 
         // Convert &str to [i8; IFNAMSIZ] (interface name)
-        let mut name_bytes = [0i8; libc::IFNAMSIZ];
+        let mut name_bytes = [0i8; IFNAMSIZ];
         for (i, &b) in interface.as_bytes().iter().enumerate() {
             name_bytes[i] = b as i8;
         }
@@ -158,9 +157,7 @@ impl Interface {
 
 
     fn get_ip_address(interface: &str) -> io::Result<Ipv4Addr> {
-        // Open a socket to interact with the network interface
-        let fd = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
-
+        let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
         if fd < 0 {
             return Err(io::Error::last_os_error());
         }

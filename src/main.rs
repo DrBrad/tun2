@@ -7,7 +7,6 @@ use std::io::{Read, Write};
 use std::net::Ipv4Addr;
 use std::os::unix::io::AsRawFd;
 use std::thread;
-use libc::{c_int, c_ulong};
 use crate::interface::Interface;
 use crate::tunnel::Tunnel;
 
@@ -33,8 +32,9 @@ pub const SIOCGIFADDR: u64 = 0x8915; // ioctl command for getting IP address
 
 pub const SYS_SENDTO: i32 = 0x2C;
 
-const SYS_SOCKET: i32 = 41; // Syscall number for `socket` on x86_64 Linux
-const SYS_IOCTL: i32 = 16;
+pub const SYS_SOCKET: i32 = 41; // Syscall number for `socket` on x86_64 Linux
+pub const SYS_IOCTL: i32 = 16;
+pub const IFNAMSIZ: usize = 16;
 
 
 
@@ -65,8 +65,8 @@ pub struct sockaddr {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct __c_anonymous_ifru_map {
-    pub mem_start: c_ulong,
-    pub mem_end: c_ulong,
+    pub mem_start: u64,
+    pub mem_end: u64,
     pub base_addr: i16,
     pub irq: u8,
     pub dma: u8,
@@ -85,14 +85,14 @@ pub union __c_anonymous_ifr_ifru {
     pub ifru_metric: i32,
     pub ifru_mtu: i32,
     pub ifru_map: __c_anonymous_ifru_map,
-    pub ifru_slave: [i8; 16],
-    pub ifru_newname: [i8; 16],
+    pub ifru_slave: [i8; IFNAMSIZ],
+    pub ifru_newname: [i8; IFNAMSIZ],
     pub ifru_data: *mut i8,
 }
 
 #[repr(C)]
 pub struct ifreq {
-    pub ifr_name: [i8; 16],
+    pub ifr_name: [i8; IFNAMSIZ],
     pub ifr_ifru: __c_anonymous_ifr_ifru,
 }
 
@@ -107,7 +107,7 @@ pub struct ifreq {
 #[repr(C)]
 #[derive(Debug)]
 struct Ifreq {
-    ifr_name: [i8; 16],
+    ifr_name: [i8; IFNAMSIZ],
     ifr_addr: sockaddr_in,
 }
 
