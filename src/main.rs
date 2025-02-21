@@ -137,7 +137,7 @@ extern "C" {
 
 
 
-const DEST_INTERFACE: &str = "wlp2s0"; // Change this to your real interface
+const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
 
 const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x02]; // Replace with actual MAC address
 const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
@@ -154,9 +154,9 @@ sudo tcpdump -i wlp7s0
 
 fn main() -> std::io::Result<()> {
     let tunnel = Tunnel::new("tap0")?;
-    /*
     let interface = Interface::new(DEST_INTERFACE)?;
 
+    /*
     let interface_clone = interface.clone();
     let tunnel_clone = tunnel.try_clone()?;
     thread::spawn(move || {
@@ -178,7 +178,7 @@ fn main() -> std::io::Result<()> {
 
         let packet = decode_packet(Interfaces::Ethernet, &buf);
 
-        println!("{:?}", &packet);//&packet[..20]);
-        //interface.write(&packet);
+        println!("{:?}    {:X?}", &packet, &buf);//&packet[..20]);
+        interface.write(&buf);
     }
 }

@@ -51,33 +51,6 @@ impl Interface {
     }
 
     pub fn write(&self, packet: &[u8]) -> io::Result<()> {
-        let packet = packet.to_vec();
-        let mut packet = packet.to_vec();
-        if packet.len() < 20 {
-            return Err(io::Error::new(io::ErrorKind::Other, "Packet length too small")); // Too short to be an IPv4 packet
-        }
-
-        let ihl = (packet[0] & 0x0F) as usize * 4; // Internet Header Length (IHL)
-        if ihl < 20 || ihl > packet.len() {
-            return Err(io::Error::new(io::ErrorKind::Other, "Packet has invalid IHL")); // Too short to be an IPv4 packet
-        }
-
-        packet[12..16].copy_from_slice(&self.source_ip.octets());
-
-        packet[10] = 0;
-        packet[11] = 0;
-
-        let checksum = compute_checksum(&packet[..ihl]);
-        packet[10..12].copy_from_slice(&checksum.to_be_bytes());
-
-        let mut eth_frame = Vec::new();
-        eth_frame.extend_from_slice(&DEST_MAC);
-        eth_frame.extend_from_slice(&self.source_mac);
-        eth_frame.extend_from_slice(&ETHERTYPE_IPV4);
-        eth_frame.extend_from_slice(&packet); // Append IP packet
-
-        println!("{:x?}", eth_frame);
-
         let sll = sockaddr_ll {
             sll_family: AF_PACKET as u16,
             sll_protocol: (ETH_P_ALL as u16).to_be(),
@@ -92,8 +65,8 @@ impl Interface {
             syscall(
                 SYS_SENDTO,
                 self.fd,
-                eth_frame.as_ptr() as *const _,
-                eth_frame.len(),
+                packet.as_ptr() as *const _,
+                packet.len(),
                 0,  // flags
                 &sll as *const _ as *const _,
                 mem::size_of::<sockaddr_ll>() as u32,
