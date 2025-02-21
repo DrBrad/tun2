@@ -178,7 +178,7 @@ fn main() -> std::io::Result<()> {
 
         let packet = decode_packet(Interfaces::Ethernet, &buf);
 
-        println!("Received packet: {:?}", &packet);//&packet[..20]);
+        println!("{:?}", &packet);//&packet[..20]);
         //interface.write(&packet);
     }
 }
