@@ -2,12 +2,15 @@
 mod tunnel;
 mod interface;
 mod utils;
+mod packet;
 
 use std::io::{Read, Write};
 use std::net::Ipv4Addr;
 use std::os::unix::io::AsRawFd;
 use std::thread;
 use crate::interface::Interface;
+use crate::packet::inter::interfaces::Interfaces;
+use crate::packet::packet::decode_packet;
 use crate::tunnel::Tunnel;
 
 
@@ -171,7 +174,10 @@ fn main() -> std::io::Result<()> {
     */
 
     loop {
-        let packet = tunnel.read()?;
+        let buf = tunnel.read()?;
+
+        let packet = decode_packet(Interfaces::Ethernet, &buf);
+
         println!("Received packet: {:?}", &packet);//&packet[..20]);
         //interface.write(&packet);
     }
