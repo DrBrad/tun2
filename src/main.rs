@@ -172,7 +172,7 @@ fn main() -> std::io::Result<()> {
 
     loop {
         let packet = tunnel.read()?;
-        println!("Received packet: {:?}", &packet[..20]);
+        println!("Received packet: {:?}", &packet);//&packet[..20]);
         //interface.write(&packet);
     }
 }

@@ -13,6 +13,7 @@ struct ArpPacket {
     tpa: [u8; 4], // Target IP
 }
 
+/*
 fn send_arp_reply(interface: &str, target_mac: [u8; 6], target_ip: Ipv4Addr, gateway_ip: Ipv4Addr, my_mac: [u8; 6]) {
     let sock = unsafe { socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP as u16) as i32) };
     if sock < 0 {
@@ -46,4 +47,4 @@ fn send_arp_reply(interface: &str, target_mac: [u8; 6], target_ip: Ipv4Addr, gat
             std::mem::size_of::<sockaddr_ll>() as u32,
         );
     }
-}
+}*/
