@@ -2,17 +2,18 @@
 mod tunnel;
 mod interface;
 mod utils;
-mod packet;
 
 use std::io::{Read, Write};
 use std::net::Ipv4Addr;
 use std::os::unix::io::AsRawFd;
 use std::thread;
+use pcap::packet::inter::interfaces::Interfaces;
+use pcap::packet::layers::layer_1::ethernet_layer::EthernetLayer;
+use pcap::packet::layers::layer_1::inter::ethernet_address::EthernetAddress;
+use pcap::packet::layers::layer_1::inter::types::Types;
+use pcap::packet::layers::layer_1_5::ethernet::arp_extension::ArpLayer;
+use pcap::packet::packet::decode_packet;
 use crate::interface::Interface;
-use crate::packet::inter::interfaces::Interfaces;
-use crate::packet::layers::layer_1::ethernet_layer::EthernetLayer;
-use crate::packet::layers::layer_1::inter::types::Types;
-use crate::packet::packet::decode_packet;
 use crate::tunnel::Tunnel;
 use crate::utils::arp::send_arp_reply;
 
@@ -178,6 +179,8 @@ fn main() -> std::io::Result<()> {
     });
     */
 
+    let sender_mac = EthernetAddress::new(0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff);
+
     loop {
         let buf = tunnel.read()?;
 
@@ -186,8 +189,9 @@ fn main() -> std::io::Result<()> {
         let ethernet_layer = packet.get_layer(0).unwrap().as_any().downcast_ref::<EthernetLayer>().unwrap();
         match ethernet_layer.get_type() {
             Types::Arp => {
+                let arp_layer = packet.get_layer(1).unwrap().as_any().downcast_ref::<ArpLayer>().unwrap();
                 //TARGET = REQUEST
-                //send_arp_reply("tap0", [0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff], Ipv4Addr::new(172, 16, 0, 25), Ipv4Addr::new(buf[38], buf[39], buf[40], buf[41]), [0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff]);
+                send_arp_reply("tap0", arp_layer.get_sender_mac(), arp_layer.get_sender_ip(), arp_layer.get_target_ip(), sender_mac);
             }
             _ => {}
         }

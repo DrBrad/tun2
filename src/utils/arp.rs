@@ -2,6 +2,7 @@ use std::ffi::CString;
 use std::mem;
 use std::net::Ipv4Addr;
 use libc::{htons, sendto, sockaddr_ll, socket, AF_PACKET, ETH_P_ARP};
+use pcap::packet::layers::layer_1::inter::ethernet_address::EthernetAddress;
 use crate::SOCK_RAW;
 
 #[repr(C, packed)]
@@ -17,7 +18,7 @@ struct ArpPacket {
     tpa: [u8; 4], // Target IP
 }
 
-pub fn send_arp_reply(interface: &str, target_mac: [u8; 6], target_ip: Ipv4Addr, sender_ip: Ipv4Addr, sender_mac: [u8; 6]) {
+pub fn send_arp_reply(interface: &str, target_mac: EthernetAddress, target_ip: Ipv4Addr, sender_ip: Ipv4Addr, sender_mac: EthernetAddress) {
     // Create raw socket
     let sock = unsafe { socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP as u16) as i32) };
     if sock < 0 {
@@ -54,9 +55,9 @@ pub fn send_arp_reply(interface: &str, target_mac: [u8; 6], target_ip: Ipv4Addr,
         hlen: 6,
         plen: 4,
         oper: htons(2),      // ARP Reply
-        sha: sender_mac,     // Your MAC (pretending to be the gateway)
+        sha: sender_mac.to_bytes(),     // Your MAC (pretending to be the gateway)
         spa: sender_ip.octets(),
-        tha: target_mac,     // Target MAC (the machine that sent the ARP request)
+        tha: target_mac.to_bytes(),     // Target MAC (the machine that sent the ARP request)
         tpa: target_ip.octets(), // Target IP
     };
 
