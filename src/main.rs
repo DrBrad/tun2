@@ -187,7 +187,7 @@ fn main() -> std::io::Result<()> {
         match ethernet_layer.get_type() {
             Types::Arp => {
                 //TARGET = REQUEST
-                send_arp_reply("tap0", [0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff], Ipv4Addr::new(172, 16, 0, 25), Ipv4Addr::new(172, 16, 0, 1), [0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff]);
+                //send_arp_reply("tap0", [0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff], Ipv4Addr::new(172, 16, 0, 25), Ipv4Addr::new(buf[38], buf[39], buf[40], buf[41]), [0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff]);
             }
             _ => {}
         }
