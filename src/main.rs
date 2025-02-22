@@ -10,11 +10,11 @@ use std::os::unix::io::AsRawFd;
 use std::thread;
 use crate::interface::Interface;
 use crate::packet::inter::interfaces::Interfaces;
+use crate::packet::layers::layer_1::ethernet_layer::EthernetLayer;
+use crate::packet::layers::layer_1::inter::types::Types;
 use crate::packet::packet::decode_packet;
 use crate::tunnel::Tunnel;
-
-
-
+use crate::utils::arp::send_arp_reply;
 
 pub const AF_INET: i32 = 2;
 pub const SOCK_DGRAM: i32 = 2;
@@ -150,6 +150,11 @@ sudo ip route add default via 10.0.0.1 dev tun0
 
 ping -I tun0 8.8.8.8
 sudo tcpdump -i wlp7s0
+
+sudo ip addr add 172.16.0.25/16 dev tap0
+sudo ip link set dev tap0 address aa:bb:cc:dd:ee:ff
+sudo ip link set dev tap0 up
+sudo ip route add default via 172.16.0.1 dev tap0
 */
 
 fn main() -> std::io::Result<()> {
@@ -178,7 +183,16 @@ fn main() -> std::io::Result<()> {
 
         let packet = decode_packet(Interfaces::Ethernet, &buf);
 
-        println!("{:?}    {:X?}", &packet, &buf);//&packet[..20]);
+        let ethernet_layer = packet.get_layer(0).unwrap().as_any().downcast_ref::<EthernetLayer>().unwrap();
+        match ethernet_layer.get_type() {
+            Types::Arp => {
+                //TARGET = REQUEST
+                send_arp_reply("tap0", [0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff], Ipv4Addr::new(172, 16, 0, 25), Ipv4Addr::new(172, 16, 0, 1), [0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff]);
+            }
+            _ => {}
+        }
+
+        //println!("{:?}    {:X?}", &packet, &buf);//&packet[..20]);
         interface.write(&buf);
     }
 }

@@ -35,8 +35,8 @@ impl Tunnel {
             return Err(io::Error::last_os_error());
         }
 
-        set_ip(name, NEW_DEST_IP)?;
-        bring_up(name)?;
+        //set_ip(name, NEW_DEST_IP)?;
+        //bring_up(name)?;
 
         Ok(Self {
             file

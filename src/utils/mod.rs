@@ -1,2 +1,2 @@
 pub mod ip_utils;
-mod arp;
+pub mod arp;
