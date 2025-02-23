@@ -155,12 +155,14 @@ sudo tcpdump -i wlp7s0
 sudo ip addr add 172.16.0.25/16 dev tap0
 sudo ip link set dev tap0 address aa:bb:cc:dd:ee:ff
 sudo ip link set dev tap0 up
+
+
 sudo ip route add default via 172.16.0.1 dev tap0
 */
 
 fn main() -> std::io::Result<()> {
     let tunnel = Tunnel::new("tap0")?;
-    let interface = Interface::new(DEST_INTERFACE)?;
+    //let interface = Interface::new(DEST_INTERFACE)?;
 
     /*
     let interface_clone = interface.clone();
@@ -178,7 +180,31 @@ fn main() -> std::io::Result<()> {
         }
     });
     */
+    /*
+    ARP
 
+    Request
+    Source
+    Destination
+
+    SenderMac = Source
+    SenderIP = Source IP
+    TargetMac = NULL
+    TargetIP = Requested IP
+
+
+    Reply
+    Source
+    Destination
+
+    SenderMac = Source
+    SenderIp = Source IP
+    TargetMac = Requesters Mac
+    TargetIP = Requested IP
+
+    */
+
+    let device_mac = EthernetAddress::new(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
     let sender_mac = EthernetAddress::new(0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff);
 
     loop {
@@ -187,16 +213,24 @@ fn main() -> std::io::Result<()> {
         let packet = decode_packet(Interfaces::Ethernet, &buf);
 
         let ethernet_layer = packet.get_layer(0).unwrap().as_any().downcast_ref::<EthernetLayer>().unwrap();
-        match ethernet_layer.get_type() {
-            Types::Arp => {
-                let arp_layer = packet.get_layer(1).unwrap().as_any().downcast_ref::<ArpLayer>().unwrap();
-                //TARGET = REQUEST
-                send_arp_reply("tap0", arp_layer.get_sender_mac(), arp_layer.get_sender_ip(), arp_layer.get_target_ip(), sender_mac);
+
+        if ethernet_layer.get_source().equals(&device_mac) {
+            println!("MATCH");
+
+            match ethernet_layer.get_type() {
+                Types::Arp => {
+                    let arp_layer = packet.get_layer(1).unwrap().as_any().downcast_ref::<ArpLayer>().unwrap();
+
+                    println!("{:?}    {:X?}", &packet, &buf);//&packet[..20]);
+                    //TARGET = REQUEST
+                    send_arp_reply("tap0", sender_mac, arp_layer.get_target_ip(), arp_layer.get_sender_mac(), arp_layer.get_sender_ip());
+                }
+                _ => {
+                    //interface.write(&buf);
+                }
             }
-            _ => {}
         }
 
-        //println!("{:?}    {:X?}", &packet, &buf);//&packet[..20]);
-        interface.write(&buf);
+
     }
 }
