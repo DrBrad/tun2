@@ -12,6 +12,8 @@ use pcap::packet::layers::layer_2::ethernet_layer::EthernetLayer;
 use pcap::packet::layers::layer_2::inter::ethernet_address::EthernetAddress;
 use pcap::packet::layers::layer_2::inter::types::Types;
 use pcap::packet::layers::layer_2_5::ethernet::arp_extension::ArpLayer;
+use pcap::packet::layers::layer_3::ethernet::inter::protocols::Protocols;
+use pcap::packet::layers::layer_3::ethernet::ipv4_layer::Ipv4Layer;
 use pcap::packet::packet::decode_packet;
 use crate::interface::Interface;
 use crate::tunnel::Tunnel;
@@ -212,14 +214,74 @@ fn main() -> std::io::Result<()> {
     */
 
     //let device_mac = EthernetAddress::new(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
-    let nat_mac = EthernetAddress::new(0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff);
+    //let nat_mac = EthernetAddress::new(0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff);
+    //let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
+
+
+
     let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
+    let broadcast_ip = Ipv4Addr::new(255, 255, 255, 255);
 
     loop {
         let buf = tunnel.read()?;
 
         let packet = decode_packet(Interfaces::Ethernet, &buf);
         println!("{:?}", packet);
+
+
+
+
+
+
+
+        //DHCP ATTEMPT
+
+
+        /*
+        let ethernet_layer = packet.get_frame(0).unwrap().as_any().downcast_ref::<EthernetLayer>().unwrap();
+        if ethernet_layer.get_destination().eq(&broadcast_mac) {
+
+            println!("{:?}", packet);
+
+            match ethernet_layer.get_type() {
+                Types::IPv4 => {
+                    let ipv4_layer = packet.get_layer(1).unwrap().as_any().downcast_ref::<Ipv4Layer>().unwrap();
+
+                    if ipv4_layer.get_destination_ip().eq(&broadcast_ip) {
+
+                        match ipv4_layer.get_protocol() {
+                            Protocols::Udp => {
+
+                                println!("DHCP");
+
+
+
+
+
+                            }
+                            _ => {}
+                        }
+
+                    }
+
+
+
+                }
+                Types::Arp => {}
+                Types::IPv6 => {}
+                _ => {}
+            }
+
+        }*/
+
+
+
+
+
+
+
+
+
 
 
         /*
