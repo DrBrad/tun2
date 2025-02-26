@@ -8,7 +8,15 @@ use std::net::Ipv4Addr;
 use std::os::unix::io::AsRawFd;
 use std::thread;
 use pcap::packet::inter::interfaces::Interfaces;
+use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
+use pcap::packet::layers::ethernet_frame::inter::types::Types;
+use pcap::packet::layers::ethernet_frame::ip::inter::protocols::Protocols;
+use pcap::packet::layers::ethernet_frame::ip::ipv4_layer::Ipv4Layer;
+use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::dhcp_layer::DhcpLayer;
+use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_payloads::UdpPayloads;
+use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_types::UdpTypes;
+use pcap::packet::layers::ethernet_frame::ip::udp::udp_layer::UdpLayer;
 use pcap::packet::packet::decode_packet;
 use crate::interface::Interface;
 use crate::tunnel::Tunnel;
@@ -224,6 +232,53 @@ fn main() -> std::io::Result<()> {
         println!("{:?}", packet);
 
 
+
+        let ethernet_frame = packet.get_frame().as_any().downcast_ref::<EthernetFrame>().unwrap();
+        match ethernet_frame.get_type() {
+            Types::IPv4 => {
+                let ipv4_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<Ipv4Layer>().unwrap();
+
+                match ipv4_layer.get_protocol() {
+                    Protocols::HopByHop => {}
+                    Protocols::Icmp => {}
+                    Protocols::Igmp => {}
+                    Protocols::Tcp => {}
+                    Protocols::Udp => {
+                        let udp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<UdpLayer>().unwrap();
+
+                        match udp_layer.get_type() {
+                            UdpTypes::Dhcp => {
+                                /*
+                                match udp_layer.get_payload() {
+                                    UdpPayloads::Known(_type, payload) => {}
+                                    UdpPayloads::Unknown(payload) => {}
+                                }
+                                let dhcp_layer = udp_layer.get_payload().as_any().downcast_ref::<DhcpLayer>().unwrap();
+                                */
+
+                                println!("DHCP");
+
+                            }
+                            UdpTypes::Dns => {}
+                            UdpTypes::Quick => {}
+                            UdpTypes::uTp => {}
+                            UdpTypes::BitTorrent => {}
+                            UdpTypes::Unknown => {}
+                        }
+
+                    }
+                    Protocols::Ipv6 => {}
+                    Protocols::Gre => {}
+                    Protocols::Icmpv6 => {}
+                    Protocols::Ospf => {}
+                    Protocols::Sps => {}
+                }
+
+            }
+            Types::Arp => {}
+            Types::IPv6 => {}
+            Types::Broadcast => {}
+        }
 
 
 
