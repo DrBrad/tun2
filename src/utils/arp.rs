@@ -2,7 +2,7 @@ use std::ffi::{c_void, CString};
 use std::{mem, ptr};
 use std::net::Ipv4Addr;
 use libc::{c_int, htons, ifreq, ioctl, sendto, sockaddr_ll, socket, AF_PACKET, ETH_P_ARP, SIOCGIFINDEX};
-use pcap::packet::layers::layer_2::inter::ethernet_address::EthernetAddress;
+use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
 use crate::SOCK_RAW;
 
 #[repr(C, packed)]
