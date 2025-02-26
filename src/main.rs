@@ -142,7 +142,7 @@ const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
 
 const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x02]; // Replace with actual MAC address
 const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
-const NEW_DEST_IP: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 1);
+const NEW_DEST_IP: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 25);
 
 /*
 sudo ip addr add 10.0.0.1/24 dev tun0
@@ -211,7 +211,9 @@ fn main() -> std::io::Result<()> {
         let buf = tunnel.read()?;
 
         let packet = decode_packet(Interfaces::Ethernet, &buf);
+        println!("{:?}", packet);
 
+        /*
         let ethernet_layer = packet.get_layer(0).unwrap().as_any().downcast_ref::<EthernetLayer>().unwrap();
 
         if ethernet_layer.get_source().equals(&device_mac) {
@@ -230,6 +232,7 @@ fn main() -> std::io::Result<()> {
                 }
             }
         }
+        */
 
 
     }
