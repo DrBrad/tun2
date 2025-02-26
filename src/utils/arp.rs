@@ -26,6 +26,18 @@ struct ArpPacket {
     tpa: [u8; 4], // Target IP
 }
 
+
+
+//PLAN
+//source = xx:xx:xx:xx:xx:xx
+//destination = requests source
+
+//sender = xx:xx:xx:xx:xx:xx
+//sender = requests target
+
+//target = requests sender
+//target = requests sender
+
 pub fn send_arp_reply(interface: &str, sender_mac: EthernetAddress, sender_ip: Ipv4Addr, target_mac: EthernetAddress, target_ip: Ipv4Addr) {
     // Create raw socket
     let sock = unsafe { socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP as u16) as c_int) };

@@ -157,7 +157,14 @@ sudo ip link set dev tap0 address aa:bb:cc:dd:ee:ff
 sudo ip link set dev tap0 up
 
 
+
+sudo dhclient tap0
+
+
 sudo ip route add default via 172.16.0.1 dev tap0
+
+sudo ip neigh add 8.8.8.8 lladdr aa:bb:ff:dd:ee:ff dev tap0
+sudo ip neigh add 10.0.0.1 lladdr aa:bb:ff:dd:ee:ff dev tap0
 */
 
 fn main() -> std::io::Result<()> {
@@ -204,8 +211,9 @@ fn main() -> std::io::Result<()> {
 
     */
 
-    let device_mac = EthernetAddress::new(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
-    let sender_mac = EthernetAddress::new(0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff);
+    //let device_mac = EthernetAddress::new(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
+    let nat_mac = EthernetAddress::new(0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff);
+    let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
 
     loop {
         let buf = tunnel.read()?;
@@ -213,19 +221,55 @@ fn main() -> std::io::Result<()> {
         let packet = decode_packet(Interfaces::Ethernet, &buf);
         println!("{:?}", packet);
 
+
         /*
+
         let ethernet_layer = packet.get_layer(0).unwrap().as_any().downcast_ref::<EthernetLayer>().unwrap();
 
-        if ethernet_layer.get_source().equals(&device_mac) {
+        if ethernet_layer.get_destination().equals(&broadcast_mac) {
             println!("MATCH");
 
             match ethernet_layer.get_type() {
                 Types::Arp => {
                     let arp_layer = packet.get_layer(1).unwrap().as_any().downcast_ref::<ArpLayer>().unwrap();
 
-                    println!("{:?}    {:X?}", &packet, &buf);//&packet[..20]);
-                    //TARGET = REQUEST
-                    send_arp_reply("tap0", sender_mac, arp_layer.get_target_ip(), arp_layer.get_sender_mac(), arp_layer.get_sender_ip());
+                    //REQUEST
+                    //source = 3c:52:a1:12:a4:50
+                    //destination = ff:ff:ff:ff:ff:ff
+
+                    //sender = 3c:52:a1:12:a4:50
+                    //sender = 192.168.0.1
+
+                    //target = 00:00:00:00:00:00
+                    //target = 192.168.0.129
+
+
+
+                    //REPLY
+                    //source = 1c:ce:51:34:00:9f
+                    //destination = 3c:52:a1:12:a4:50
+
+                    //sender = 1c:ce:51:34:00:9f
+                    //sender = 192.168.0.129
+
+                    //target = 3c:52:a1:12:a4:50
+                    //target = 192.168.0.1
+
+
+
+                    //PLAN
+                    //source = xx:xx:xx:xx:xx:xx
+                    //destination = requests source
+
+                    //sender = xx:xx:xx:xx:xx:xx
+                    //sender = requests target
+
+                    //target = requests sender
+                    //target = requests sender
+
+                    //println!("{:?}    {:X?}", &packet, &buf);//&packet[..20]);
+                    send_arp_reply("tap0", nat_mac, arp_layer.get_target_ip(), arp_layer.get_sender_mac(), arp_layer.get_sender_ip());
+
                 }
                 _ => {
                     //interface.write(&buf);
