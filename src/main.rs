@@ -17,6 +17,7 @@ use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::dhcp_layer::DhcpLayer;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_payloads::UdpPayloads;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_types::UdpTypes;
 use pcap::packet::layers::ethernet_frame::ip::udp::udp_layer::UdpLayer;
+use pcap::packet::layers::inter::layer::Layer;
 use pcap::packet::packet::{decode_packet, Packet};
 use crate::interface::Interface;
 use crate::tunnel::Tunnel;
@@ -260,7 +261,8 @@ fn main() -> std::io::Result<()> {
 
 
 
-                                //let ethernet_frame = EthernetFrame::new()
+                                let ethernet_frame = EthernetFrame::new(broadcast_mac, broadcast_mac, Types::IPv4);
+                                ethernet_frame.to_bytes();
 
 
 
