@@ -17,7 +17,7 @@ use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::dhcp_layer::DhcpLayer;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_payloads::UdpPayloads;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_types::UdpTypes;
 use pcap::packet::layers::ethernet_frame::ip::udp::udp_layer::UdpLayer;
-use pcap::packet::packet::decode_packet;
+use pcap::packet::packet::{decode_packet, Packet};
 use crate::interface::Interface;
 use crate::tunnel::Tunnel;
 use crate::utils::arp::send_arp_reply;
@@ -258,6 +258,16 @@ fn main() -> std::io::Result<()> {
 
                                 println!("DHCP");
 
+
+
+                                //let ethernet_frame = EthernetFrame::new()
+
+
+
+
+
+
+
                             }
                             UdpTypes::Dns => {}
                             UdpTypes::Quick => {}
@@ -393,3 +403,82 @@ fn main() -> std::io::Result<()> {
 
     }
 }
+
+
+
+
+
+
+
+
+
+/*
+pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: u32, gateway_ip: u32) -> DhcpLayer {
+    let mut options = Vec::new();
+
+    // Message type: DHCP Offer (53, 2)
+    options.push(53);
+    options.push(2);  // DHCP Offer
+
+    // Subnet Mask (option 1)
+    options.push(1); // Option 1: Subnet Mask
+    options.push(255);
+    options.push(255);
+    options.push(255);
+    options.push(0);  // Subnet Mask: 255.255.255.0
+
+    // Gateway (option 3)
+    options.push(3); // Option 3: Router (Gateway)
+    options.push(10); // 10.0.0.1 is the gateway
+    options.push(0);
+    options.push(0);
+    options.push(1);  // 10.0.0.1 (Gateway)
+
+    // DNS (option 6)
+    options.push(6); // Option 6: DNS Servers
+    options.push(8); // 8.8.8.8 DNS (for example)
+    options.push(8);
+    options.push(8);
+    options.push(8);
+    options.push(8);  // 8.8.8.8 (DNS server)
+
+    // Lease Time (option 51)
+    options.push(51); // Option 51: Lease Time
+    options.push(0); // Lease time (in seconds)
+    options.push(0);
+    options.push(0);
+    options.push(60); // 60 seconds lease
+
+    // DHCP Server Identifier (option 54)
+    options.push(54); // Option 54: DHCP Server Identifier
+    options.push(10); // 10.0.0.1 is the DHCP server
+    options.push(0);
+    options.push(0);
+    options.push(1);  // 10.0.0.1 (Server IP)
+
+    // End Option
+    options.push(255); // Option 255: End
+
+    // Create the response DHCP offer
+    DhcpLayer {
+        op: 2, // DHCP Offer
+        htype: request.htype,
+        hlen: request.hlen,
+        hops: 0,
+        xid: request.xid,  // Same transaction ID as the request
+        secs: 0,
+        flags: 0,
+        ciaddr: 0,  // Client IP address (0 in offer)
+        yiaddr: offered_ip, // Offered IP address (10.0.0.2)
+        siaddr: gateway_ip, // Gateway IP (10.0.0.1)
+        giaddr: 0,
+        chaddr: request.chaddr, // Client MAC address (from request)
+        sname: [0; 64], // Optional Server name (empty)
+        file: [0; 128], // Optional boot file (empty)
+        cookie: DhcpCookie::new(99, 130, 83, 99),
+        options,
+        length: 0, // You can calculate the full packet length if necessary
+    }
+}
+*/
+
