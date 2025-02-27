@@ -264,6 +264,8 @@ fn main() -> std::io::Result<()> {
                                 let ethernet_frame = EthernetFrame::new(broadcast_mac, broadcast_mac, Types::IPv4);
                                 ethernet_frame.to_bytes();
 
+                                //let ipv4_layer = Ipv4Layer::new();
+                                //ipv4_layer.compute_length()
 
 
 
