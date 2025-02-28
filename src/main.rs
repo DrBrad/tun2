@@ -174,8 +174,9 @@ tail -100 /var/log/syslog
 
 sudo ip route add default via 172.16.0.1 dev tap0
 
-sudo ip neigh add 8.8.8.8 lladdr 00:10:FA:63:38:4a dev tap0
-sudo ip neigh add 10.0.0.1 lladdr ff:ee:dd:ff:ee:dd dev tap0
+sudo ip neigh add 10.0.0.1 lladdr 00:10:FA:63:38:4a dev tap0
+
+sudo ip neigh add 8.8.8.8 lladdr ff:ee:dd:ff:ee:dd dev tap0
 */
 
 fn main() -> std::io::Result<()> {
