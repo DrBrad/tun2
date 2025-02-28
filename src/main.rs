@@ -168,6 +168,7 @@ sudo ip link set dev tap0 up
 
 
 sudo dhclient tap0
+tail -100 /var/log/syslog
 
 
 sudo ip route add default via 172.16.0.1 dev tap0
@@ -473,6 +474,11 @@ pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip
     // Rebinding Time: 45 seconds (Option 59, Length 4)
     options.extend_from_slice(&[59, 4, 0, 0, 0, 45]);
 
+    let lease_time: u32 = 86400; // 24 hours in seconds
+    options.push(51); // Option code for lease time
+    options.push(4);  // Length of the option (4 bytes)
+    options.extend_from_slice(&lease_time.to_be_bytes()); // Lease time in big-endian format
+
     // End Option (255)
     options.push(255);
 
@@ -514,6 +520,11 @@ pub fn generate_dhcp_ack(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: 
 
     // DNS Server: 8.8.8.8 (Option 6, Length 4)
     options.extend_from_slice(&[6, 4, 8, 8, 8, 8]);
+
+    let lease_time: u32 = 86400; // 24 hours in seconds
+    options.push(51); // Option code for lease time
+    options.push(4);  // Length of the option (4 bytes)
+    options.extend_from_slice(&lease_time.to_be_bytes()); // Lease time in big-endian format
 
     // End Option (255)
     options.push(255);
