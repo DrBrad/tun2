@@ -271,10 +271,10 @@ fn main() -> std::io::Result<()> {
 
                                         let mut dhcp_layer_r = match DhcpMessageTypes::from_code(dhcp_layer.options[2]).unwrap() {
                                             DhcpMessageTypes::Discover => {
-                                                generate_dhcp_offer(DhcpMessageTypes::Offer, dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1))
+                                                generate_dhcp_offer(dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1))
                                             }
                                             DhcpMessageTypes::Request => {
-                                                generate_dhcp_offer(DhcpMessageTypes::Ack, dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1))
+                                                generate_dhcp_ack(dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1))
                                             }
                                             _ => {
                                                 todo!()
@@ -446,14 +446,65 @@ fn main() -> std::io::Result<()> {
 
 
 
+pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
+    let mut options = Vec::new();
+
+    // DHCP Message Type: ACK (Option 53, Length 1, Value 5)
+    options.extend_from_slice(&[53, 1, DhcpMessageTypes::Offer.get_code()]);
+
+    // Subnet Mask: 255.255.255.0 (Option 1, Length 4)
+    options.extend_from_slice(&[1, 4, 255, 255, 255, 0]);
+
+    // Router (Gateway): 10.0.0.1 (Option 3, Length 4)
+    options.extend_from_slice(&[3, 4, 10, 0, 0, 1]);
+
+    // DNS Server: 8.8.8.8 (Option 6, Length 4)
+    options.extend_from_slice(&[6, 4, 8, 8, 8, 8]);
+
+    // Server Identifier: 10.0.0.1 (Option 54, Length 4)
+    options.extend_from_slice(&[54, 4, 10, 0, 0, 1]);
+
+    // Lease Time: 60 seconds (Option 51, Length 4)
+    options.extend_from_slice(&[51, 4, 0, 0, 0, 60]);
+
+    // Renewal Time: 30 seconds (Option 58, Length 4)
+    options.extend_from_slice(&[58, 4, 0, 0, 0, 30]);
+
+    // Rebinding Time: 45 seconds (Option 59, Length 4)
+    options.extend_from_slice(&[59, 4, 0, 0, 0, 45]);
+
+    // End Option (255)
+    options.push(255);
+
+    // Create the response DHCP offer
+    DhcpLayer {
+        op: DhcpOperations::BootReply, // DHCP Offer
+        htype: request.htype,
+        hlen: request.hlen,
+        hops: 0,
+        xid: request.xid,  // Same transaction ID as the request
+        secs: 0,
+        flags: 0,
+        ciaddr: 0,  // Client IP address (0 in offer)
+        yiaddr: u32::from_be_bytes(offered_ip.octets()), // Offered IP address (10.0.0.2)
+        siaddr: u32::from_be_bytes(gateway_ip.octets()), // Gateway IP (10.0.0.1)
+        giaddr: 0,
+        chaddr: request.chaddr, // Client MAC address (from request)
+        sname: [0; 64], // Optional Server name (empty)
+        file: [0; 128], // Optional boot file (empty)
+        cookie: DhcpCookie::new(99, 130, 83, 99),
+        options,
+        length: 0, // You can calculate the full packet length if necessary
+    }
+}
 
 
 
 
-pub fn generate_dhcp_offer(message_type: DhcpMessageTypes, request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
+pub fn generate_dhcp_ack(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
     let mut options = Vec::new();
     // DHCP Message Type: Offer (Option 53, Length 1, Value 2)
-    options.extend_from_slice(&[53, 1, message_type.get_code()]);
+    options.extend_from_slice(&[53, 1, DhcpMessageTypes::Ack.get_code()]);
 
     // Subnet Mask: 255.255.255.0 (Option 1, Length 4)
     options.extend_from_slice(&[1, 4, 255, 255, 255, 0]);
