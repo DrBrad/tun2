@@ -8,7 +8,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::os::unix::io::AsRawFd;
 use std::thread;
 use pcap::packet::inter::interfaces::Interfaces;
-use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpLayer;
+use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpExtension;
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
 use pcap::packet::layers::ethernet_frame::inter::types::Types;
@@ -327,10 +327,31 @@ fn main() -> std::io::Result<()> {
 
             }
             Types::Arp => {
-                let arp_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<ArpLayer>().unwrap();
+                let arp_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<ArpExtension>().unwrap();
 
                 if !ethernet_frame.get_destination_mac().eq(&gateway_mac) && arp_layer.get_target_address().eq(&Ipv4Addr::new(10, 0, 0, 1)) {
-                    send_arp_reply("tap0", gateway_mac, Ipv4Addr::new(10, 0, 0, 1), arp_layer.get_sender_mac(), arp_layer.get_sender_address());
+                    let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), gateway_mac, Types::Arp);
+                    let mut arp_layer_r = ArpExtension {
+                        hardware_type: 1,
+                        protocol_type: 0x0800,
+                        hardware_size: 6,
+                        protocol_size: 4,
+                        opcode: 2,
+                        sender_mac: gateway_mac,
+                        sender_address: Ipv4Addr::new(10, 0, 0, 1),
+                        target_mac: arp_layer.get_sender_mac(),
+                        target_address: arp_layer.get_sender_address(),
+                    };
+
+                    arp_layer_r.compute_length();
+                    ethernet_frame_r.set_data(Box::new(arp_layer_r));
+
+                    ethernet_frame_r.compute_length();
+
+                    tunnel.write(&ethernet_frame_r.to_bytes())?;
+
+
+                    //send_arp_reply("tap0", gateway_mac, Ipv4Addr::new(10, 0, 0, 1), arp_layer.get_sender_mac(), arp_layer.get_sender_address());
                 }
             }
             Types::IPv6 => {}
