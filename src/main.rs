@@ -330,9 +330,8 @@ fn main() -> std::io::Result<()> {
                 let arp_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<ArpLayer>().unwrap();
 
                 if !ethernet_frame.get_destination_mac().eq(&gateway_mac) && arp_layer.get_target_address().eq(&Ipv4Addr::new(10, 0, 0, 1)) {
-                    send_arp_reply("tap0", gateway_mac, arp_layer.get_target_address(), arp_layer.get_sender_mac(), arp_layer.get_sender_address());
+                    send_arp_reply("tap0", gateway_mac, Ipv4Addr::new(10, 0, 0, 1), arp_layer.get_sender_mac(), arp_layer.get_sender_address());
                 }
-
             }
             Types::IPv6 => {}
             Types::Broadcast => {}
