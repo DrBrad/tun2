@@ -4,7 +4,7 @@ mod interface;
 mod utils;
 
 use std::io::{Read, Write};
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr};
 use std::os::unix::io::AsRawFd;
 use std::thread;
 use pcap::packet::inter::interfaces::Interfaces;
@@ -266,15 +266,24 @@ fn main() -> std::io::Result<()> {
 
                                 let mut ipv4_layer_r = Ipv4Layer::new(Ipv4Addr::new(255, 255, 255, 255), ipv4_layer.get_source_address(), Protocols::Udp);
                                 ipv4_layer_r.compute_length();
+
+
+                                let mut udp_layer_r = UdpLayer::new(udp_layer.get_destination_port(), udp_layer.get_source_port());
+                                udp_layer_r.compute_length();
+                                udp_layer_r.compute_checksum(IpAddr::V4(ipv4_layer_r.get_source_address()), IpAddr::V4(ipv4_layer_r.get_destination_address()));
+                                ipv4_layer_r.set_data(Box::new(udp_layer_r));
+
+
+
+
                                 ipv4_layer_r.compute_checksum();
                                 ethernet_frame_r.set_data(Box::new(ipv4_layer_r));
 
 
 
-
-
-
                                 ethernet_frame_r.compute_length();
+
+                                tunnel.write(&ethernet_frame_r.to_bytes())?;
 
                                 //ethernet_frame_r.get_data().unwrap().as_any().downcast_ref::<Ipv4Layer>().unwrap().calculate_checksum();
 
