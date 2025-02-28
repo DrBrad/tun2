@@ -15,6 +15,7 @@ use pcap::packet::layers::ethernet_frame::ip::inter::protocols::Protocols;
 use pcap::packet::layers::ethernet_frame::ip::ipv4_layer::Ipv4Layer;
 use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::dhcp_layer::DhcpLayer;
 use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_cookie::DhcpCookie;
+use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_operations::DhcpOperations;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_payloads::UdpPayloads;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_types::UdpTypes;
 use pcap::packet::layers::ethernet_frame::ip::udp::udp_layer::UdpLayer;
@@ -223,6 +224,7 @@ fn main() -> std::io::Result<()> {
     //let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
 
 
+    let gateway_mac = EthernetAddress::new(0xff, 0xee, 0xdd, 0xff, 0xdd, 0xee);
 
     let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
     let broadcast_ip = Ipv4Addr::new(255, 255, 255, 255);
@@ -247,48 +249,52 @@ fn main() -> std::io::Result<()> {
                     Protocols::Udp => {
                         let udp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<UdpLayer>().unwrap();
 
-                        match udp_layer.get_type() {
-                            UdpTypes::Dhcp => {
-                                /*
-                                match udp_layer.get_payload() {
-                                    UdpPayloads::Known(_type, payload) => {}
-                                    UdpPayloads::Unknown(payload) => {}
+                        match udp_layer.get_payload() {
+                            UdpPayloads::Known(_type, payload) => {
+
+
+                                match _type {
+                                    UdpTypes::Dhcp => {
+                                        let dhcp_layer = payload.as_any().downcast_ref::<DhcpLayer>().unwrap();
+                                        println!("RECV {:?}", packet);
+
+                                        println!("DHCP");
+
+
+
+                                        let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), gateway_mac, Types::IPv4);
+                                        let mut ipv4_layer_r = Ipv4Layer::new(Ipv4Addr::new(10, 0, 0, 1), Ipv4Addr::new(255, 255, 255, 255), Protocols::Udp);
+                                        ipv4_layer_r.compute_checksum();
+                                        let mut udp_layer_r = UdpLayer::new(udp_layer.get_destination_port(), udp_layer.get_source_port());
+
+
+                                        let mut dhcp_layer_r = generate_dhcp_offer(dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1));
+                                        dhcp_layer_r.compute_length();
+                                        udp_layer_r.set_payload_layer(UdpTypes::Dhcp, Box::new(dhcp_layer_r));
+
+                                        //udp_layer_r.compute_length();
+                                        udp_layer_r.compute_checksum(IpAddr::V4(ipv4_layer_r.get_source_address()), IpAddr::V4(ipv4_layer_r.get_destination_address()));
+                                        ipv4_layer_r.set_data(Box::new(udp_layer_r));
+
+
+                                        ipv4_layer_r.compute_checksum();
+                                        ethernet_frame_r.set_data(Box::new(ipv4_layer_r));
+
+
+
+                                        ethernet_frame_r.compute_length();
+
+                                        tunnel.write(&ethernet_frame_r.to_bytes())?;
+
+                                        //ethernet_frame_r.get_data().unwrap().as_any().downcast_ref::<Ipv4Layer>().unwrap().calculate_checksum();
+
+                                        println!("SENT {:?}", ethernet_frame_r);
+
+
+
+                                    }
+                                    _ => {}
                                 }
-                                let dhcp_layer = udp_layer.get_payload().as_any().downcast_ref::<DhcpLayer>().unwrap();
-                                */
-                                println!("RECV {:?}", packet);
-
-                                println!("DHCP");
-
-
-
-                                let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), broadcast_mac, Types::IPv4);
-                                ethernet_frame.to_bytes();
-
-                                let mut ipv4_layer_r = Ipv4Layer::new(Ipv4Addr::new(255, 255, 255, 255), ipv4_layer.get_source_address(), Protocols::Udp);
-                                ipv4_layer_r.compute_length();
-
-
-                                let mut udp_layer_r = UdpLayer::new(udp_layer.get_destination_port(), udp_layer.get_source_port());
-                                udp_layer_r.compute_length();
-                                udp_layer_r.compute_checksum(IpAddr::V4(ipv4_layer_r.get_source_address()), IpAddr::V4(ipv4_layer_r.get_destination_address()));
-                                ipv4_layer_r.set_data(Box::new(udp_layer_r));
-
-
-
-
-                                ipv4_layer_r.compute_checksum();
-                                ethernet_frame_r.set_data(Box::new(ipv4_layer_r));
-
-
-
-                                ethernet_frame_r.compute_length();
-
-                                tunnel.write(&ethernet_frame_r.to_bytes())?;
-
-                                //ethernet_frame_r.get_data().unwrap().as_any().downcast_ref::<Ipv4Layer>().unwrap().calculate_checksum();
-
-                                println!("SENT {:?}", ethernet_frame_r);
 
 
 
@@ -431,8 +437,8 @@ fn main() -> std::io::Result<()> {
 
 
 
-/*
-pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: u32, gateway_ip: u32) -> DhcpLayer {
+
+pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
     let mut options = Vec::new();
 
     // Message type: DHCP Offer (53, 2)
@@ -480,7 +486,7 @@ pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: u32, gateway_ip: u32
 
     // Create the response DHCP offer
     DhcpLayer {
-        op: 2, // DHCP Offer
+        op: DhcpOperations::Offer, // DHCP Offer
         htype: request.htype,
         hlen: request.hlen,
         hops: 0,
@@ -488,8 +494,8 @@ pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: u32, gateway_ip: u32
         secs: 0,
         flags: 0,
         ciaddr: 0,  // Client IP address (0 in offer)
-        yiaddr: offered_ip, // Offered IP address (10.0.0.2)
-        siaddr: gateway_ip, // Gateway IP (10.0.0.1)
+        yiaddr: u32::from_be_bytes(offered_ip.octets()), // Offered IP address (10.0.0.2)
+        siaddr: u32::from_be_bytes(gateway_ip.octets()), // Gateway IP (10.0.0.1)
         giaddr: 0,
         chaddr: request.chaddr, // Client MAC address (from request)
         sname: [0; 64], // Optional Server name (empty)
@@ -499,4 +505,4 @@ pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: u32, gateway_ip: u32
         length: 0, // You can calculate the full packet length if necessary
     }
 }
-*/
+
