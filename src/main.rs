@@ -15,6 +15,7 @@ use pcap::packet::layers::ethernet_frame::ip::inter::protocols::Protocols;
 use pcap::packet::layers::ethernet_frame::ip::ipv4_layer::Ipv4Layer;
 use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::dhcp_layer::DhcpLayer;
 use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_cookie::DhcpCookie;
+use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_message_types::DhcpMessageTypes;
 use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_operations::DhcpOperations;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_payloads::UdpPayloads;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_types::UdpTypes;
@@ -268,7 +269,18 @@ fn main() -> std::io::Result<()> {
                                         let mut udp_layer_r = UdpLayer::new(udp_layer.get_destination_port(), udp_layer.get_source_port());
 
 
-                                        let mut dhcp_layer_r = generate_dhcp_offer(dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1));
+                                        let mut dhcp_layer_r = match DhcpMessageTypes::from_code(dhcp_layer.options[2]).unwrap() {
+                                            DhcpMessageTypes::Discover => {
+                                                generate_dhcp_offer(DhcpMessageTypes::Offer, dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1))
+                                            }
+                                            DhcpMessageTypes::Request => {
+                                                generate_dhcp_offer(DhcpMessageTypes::Ack, dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1))
+                                            }
+                                            _ => {
+                                                todo!()
+                                            }
+                                        };
+                                        //let mut dhcp_layer_r = generate_dhcp_offer(DhcpOperations::Offer, dhcp_layer, Ipv4Addr::new(10, 0, 0, 2), Ipv4Addr::new(10, 0, 0, 1));
                                         dhcp_layer_r.compute_length();
                                         udp_layer_r.set_payload_layer(UdpTypes::Dhcp, Box::new(dhcp_layer_r));
 
@@ -438,10 +450,10 @@ fn main() -> std::io::Result<()> {
 
 
 
-pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
+pub fn generate_dhcp_offer(message_type: DhcpMessageTypes, request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
     let mut options = Vec::new();
     // DHCP Message Type: Offer (Option 53, Length 1, Value 2)
-    options.extend_from_slice(&[53, 1, 2]);
+    options.extend_from_slice(&[53, 1, message_type.get_code()]);
 
     // Subnet Mask: 255.255.255.0 (Option 1, Length 4)
     options.extend_from_slice(&[1, 4, 255, 255, 255, 0]);
@@ -457,7 +469,7 @@ pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip
 
     // Create the response DHCP offer
     DhcpLayer {
-        op: DhcpOperations::Offer, // DHCP Offer
+        op: DhcpOperations::BootReply, // DHCP Offer
         htype: request.htype,
         hlen: request.hlen,
         hops: 0,
