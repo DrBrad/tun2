@@ -269,6 +269,11 @@ fn main() -> std::io::Result<()> {
                                 ipv4_layer_r.compute_checksum();
                                 ethernet_frame_r.set_data(Box::new(ipv4_layer_r));
 
+
+
+
+
+
                                 ethernet_frame_r.compute_length();
 
                                 //ethernet_frame_r.get_data().unwrap().as_any().downcast_ref::<Ipv4Layer>().unwrap().calculate_checksum();
@@ -278,11 +283,7 @@ fn main() -> std::io::Result<()> {
 
 
                             }
-                            UdpTypes::Dns => {}
-                            UdpTypes::Quick => {}
-                            UdpTypes::uTp => {}
-                            UdpTypes::BitTorrent => {}
-                            UdpTypes::Unknown => {}
+                            _ => {}
                         }
 
                     }
