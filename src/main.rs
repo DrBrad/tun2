@@ -14,6 +14,7 @@ use pcap::packet::layers::ethernet_frame::inter::types::Types;
 use pcap::packet::layers::ethernet_frame::ip::inter::protocols::Protocols;
 use pcap::packet::layers::ethernet_frame::ip::ipv4_layer::Ipv4Layer;
 use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::dhcp_layer::DhcpLayer;
+use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_cookie::DhcpCookie;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_payloads::UdpPayloads;
 use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_types::UdpTypes;
 use pcap::packet::layers::ethernet_frame::ip::udp::udp_layer::UdpLayer;
@@ -261,7 +262,7 @@ fn main() -> std::io::Result<()> {
 
 
 
-                                let mut ethernet_frame_r = EthernetFrame::new(broadcast_mac, broadcast_mac, Types::IPv4);
+                                let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), broadcast_mac, Types::IPv4);
                                 ethernet_frame.to_bytes();
 
                                 let mut ipv4_layer_r = Ipv4Layer::new(Ipv4Addr::new(255, 255, 255, 255), ipv4_layer.get_source_address(), Protocols::Udp);
@@ -430,7 +431,6 @@ fn main() -> std::io::Result<()> {
 
 
 
-
 /*
 pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: u32, gateway_ip: u32) -> DhcpLayer {
     let mut options = Vec::new();
@@ -500,4 +500,3 @@ pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: u32, gateway_ip: u32
     }
 }
 */
-
