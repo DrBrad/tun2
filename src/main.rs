@@ -8,6 +8,7 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::os::unix::io::AsRawFd;
 use std::thread;
 use pcap::packet::inter::interfaces::Interfaces;
+use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpLayer;
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
 use pcap::packet::layers::ethernet_frame::inter::types::Types;
@@ -174,7 +175,7 @@ tail -100 /var/log/syslog
 sudo ip route add default via 172.16.0.1 dev tap0
 
 sudo ip neigh add 8.8.8.8 lladdr aa:bb:ff:dd:ee:ff dev tap0
-sudo ip neigh add 10.0.0.1 lladdr aa:bb:ff:dd:ee:ff dev tap0
+sudo ip neigh add 10.0.0.1 lladdr ff:ee:dd:ff:ee:dd dev tap0
 */
 
 fn main() -> std::io::Result<()> {
@@ -226,7 +227,7 @@ fn main() -> std::io::Result<()> {
     //let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
 
 
-    let gateway_mac = EthernetAddress::new(0xff, 0xee, 0xdd, 0xff, 0xdd, 0xee);
+    let gateway_mac = EthernetAddress::new(0x00, 0x10, 0xFA, 0x63, 0x38, 0x4a);
 
     let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
     let broadcast_ip = Ipv4Addr::new(255, 255, 255, 255);
@@ -324,122 +325,17 @@ fn main() -> std::io::Result<()> {
                 }
 
             }
-            Types::Arp => {}
+            Types::Arp => {
+                let arp_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<ArpLayer>().unwrap();
+
+                if !ethernet_frame.get_destination_mac().eq(&gateway_mac) {
+                    send_arp_reply("tap0", gateway_mac, arp_layer.get_target_address(), arp_layer.get_sender_mac(), arp_layer.get_sender_address());
+                }
+
+            }
             Types::IPv6 => {}
             Types::Broadcast => {}
         }
-
-
-
-
-
-        //DHCP ATTEMPT
-
-
-        /*
-        let ethernet_layer = packet.get_frame(0).unwrap().as_any().downcast_ref::<EthernetLayer>().unwrap();
-        if ethernet_layer.get_destination().eq(&broadcast_mac) {
-
-            println!("{:?}", packet);
-
-            match ethernet_layer.get_type() {
-                Types::IPv4 => {
-                    let ipv4_layer = packet.get_layer(1).unwrap().as_any().downcast_ref::<Ipv4Layer>().unwrap();
-
-                    if ipv4_layer.get_destination_ip().eq(&broadcast_ip) {
-
-                        match ipv4_layer.get_protocol() {
-                            Protocols::Udp => {
-
-                                println!("DHCP");
-
-
-
-
-
-                            }
-                            _ => {}
-                        }
-
-                    }
-
-
-
-                }
-                Types::Arp => {}
-                Types::IPv6 => {}
-                _ => {}
-            }
-
-        }*/
-
-
-
-
-
-
-
-
-
-
-
-        /*
-
-        let ethernet_layer = packet.get_layer(0).unwrap().as_any().downcast_ref::<EthernetLayer>().unwrap();
-
-        if ethernet_layer.get_destination().equals(&broadcast_mac) {
-            println!("MATCH");
-
-            match ethernet_layer.get_type() {
-                Types::Arp => {
-                    let arp_layer = packet.get_layer(1).unwrap().as_any().downcast_ref::<ArpLayer>().unwrap();
-
-                    //REQUEST
-                    //source = 3c:52:a1:12:a4:50
-                    //destination = ff:ff:ff:ff:ff:ff
-
-                    //sender = 3c:52:a1:12:a4:50
-                    //sender = 192.168.0.1
-
-                    //target = 00:00:00:00:00:00
-                    //target = 192.168.0.129
-
-
-
-                    //REPLY
-                    //source = 1c:ce:51:34:00:9f
-                    //destination = 3c:52:a1:12:a4:50
-
-                    //sender = 1c:ce:51:34:00:9f
-                    //sender = 192.168.0.129
-
-                    //target = 3c:52:a1:12:a4:50
-                    //target = 192.168.0.1
-
-
-
-                    //PLAN
-                    //source = xx:xx:xx:xx:xx:xx
-                    //destination = requests source
-
-                    //sender = xx:xx:xx:xx:xx:xx
-                    //sender = requests target
-
-                    //target = requests sender
-                    //target = requests sender
-
-                    //println!("{:?}    {:X?}", &packet, &buf);//&packet[..20]);
-                    send_arp_reply("tap0", nat_mac, arp_layer.get_target_ip(), arp_layer.get_sender_mac(), arp_layer.get_sender_ip());
-
-                }
-                _ => {
-                    //interface.write(&buf);
-                }
-            }
-        }
-        */
-
-
     }
 }
 
