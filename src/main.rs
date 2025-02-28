@@ -266,7 +266,7 @@ fn main() -> std::io::Result<()> {
 
                                 let mut ipv4_layer_r = Ipv4Layer::new(Ipv4Addr::new(255, 255, 255, 255), ipv4_layer.get_source_address().clone(), Protocols::Udp);
                                 ipv4_layer_r.compute_length();
-                                ipv4_layer_r.calculate_checksum();
+                                ipv4_layer_r.compute_checksum();
                                 ethernet_frame_r.set_data(Box::new(ipv4_layer_r));
 
                                 ethernet_frame_r.compute_length();
