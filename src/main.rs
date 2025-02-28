@@ -25,7 +25,6 @@ use pcap::packet::layers::inter::layer::Layer;
 use pcap::packet::packet::{decode_packet, Packet};
 use crate::interface::Interface;
 use crate::tunnel::Tunnel;
-use crate::utils::arp::send_arp_reply;
 
 pub const AF_INET: i32 = 2;
 pub const SOCK_DGRAM: i32 = 2;
