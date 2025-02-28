@@ -264,7 +264,7 @@ fn main() -> std::io::Result<()> {
                                 let mut ethernet_frame_r = EthernetFrame::new(broadcast_mac, broadcast_mac, Types::IPv4);
                                 ethernet_frame.to_bytes();
 
-                                let mut ipv4_layer_r = Ipv4Layer::new(Ipv4Addr::new(255, 255, 255, 255), ipv4_layer.get_source_address().clone(), Protocols::Udp);
+                                let mut ipv4_layer_r = Ipv4Layer::new(Ipv4Addr::new(255, 255, 255, 255), ipv4_layer.get_source_address(), Protocols::Udp);
                                 ipv4_layer_r.compute_length();
                                 ipv4_layer_r.compute_checksum();
                                 ethernet_frame_r.set_data(Box::new(ipv4_layer_r));
