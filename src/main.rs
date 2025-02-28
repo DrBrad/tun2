@@ -440,49 +440,20 @@ fn main() -> std::io::Result<()> {
 
 pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
     let mut options = Vec::new();
+    // DHCP Message Type: Offer (Option 53, Length 1, Value 2)
+    options.extend_from_slice(&[53, 1, 2]);
 
-    // Message type: DHCP Offer (53, 2)
-    options.push(53);
-    options.push(2);  // DHCP Offer
+    // Subnet Mask: 255.255.255.0 (Option 1, Length 4)
+    options.extend_from_slice(&[1, 4, 255, 255, 255, 0]);
 
-    // Subnet Mask (option 1)
-    options.push(1); // Option 1: Subnet Mask
+    // Router (Gateway): 10.0.0.1 (Option 3, Length 4)
+    options.extend_from_slice(&[3, 4, 10, 0, 0, 1]);
+
+    // DNS Server: 8.8.8.8 (Option 6, Length 4)
+    options.extend_from_slice(&[6, 4, 8, 8, 8, 8]);
+
+    // End Option (255)
     options.push(255);
-    options.push(255);
-    options.push(255);
-    options.push(0);  // Subnet Mask: 255.255.255.0
-
-    // Gateway (option 3)
-    options.push(3); // Option 3: Router (Gateway)
-    options.push(10); // 10.0.0.1 is the gateway
-    options.push(0);
-    options.push(0);
-    options.push(1);  // 10.0.0.1 (Gateway)
-
-    // DNS (option 6)
-    options.push(6); // Option 6: DNS Servers
-    options.push(8); // 8.8.8.8 DNS (for example)
-    options.push(8);
-    options.push(8);
-    options.push(8);
-    options.push(8);  // 8.8.8.8 (DNS server)
-
-    // Lease Time (option 51)
-    options.push(51); // Option 51: Lease Time
-    options.push(0); // Lease time (in seconds)
-    options.push(0);
-    options.push(0);
-    options.push(60); // 60 seconds lease
-
-    // DHCP Server Identifier (option 54)
-    options.push(54); // Option 54: DHCP Server Identifier
-    options.push(10); // 10.0.0.1 is the DHCP server
-    options.push(0);
-    options.push(0);
-    options.push(1);  // 10.0.0.1 (Server IP)
-
-    // End Option
-    options.push(255); // Option 255: End
 
     // Create the response DHCP offer
     DhcpLayer {
