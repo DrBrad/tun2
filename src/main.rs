@@ -8,6 +8,7 @@ use std::os::unix::io::AsRawFd;
 use std::thread;
 use pcap::packet::inter::interfaces::Interfaces;
 use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpExtension;
+use pcap::packet::layers::ethernet_frame::arp::inter::arp_operations::ArpOperations;
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
 use pcap::packet::layers::ethernet_frame::inter::types::Types;
@@ -252,18 +253,7 @@ fn main() -> std::io::Result<()> {
 
                     if arp_layer.get_target_address().eq(&DEFAULT_GATEWAY) {
                         let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), gateway_mac, Types::Arp);
-                        let mut arp_layer_r = ArpExtension {
-                            hardware_type: 1,
-                            protocol_type: 0x0800,
-                            hardware_size: 6,
-                            protocol_size: 4,
-                            opcode: 2,
-                            sender_mac: gateway_mac,
-                            sender_address: Ipv4Addr::new(10, 0, 0, 1),
-                            target_mac: arp_layer.get_sender_mac(),
-                            target_address: arp_layer.get_sender_address(),
-                        };
-
+                        let mut arp_layer_r = ArpExtension::new(ArpOperations::Reply, gateway_mac, DEFAULT_GATEWAY, arp_layer.get_sender_mac(), arp_layer.get_sender_address());
                         arp_layer_r.compute_length();
                         ethernet_frame_r.set_data(Box::new(arp_layer_r));
 
