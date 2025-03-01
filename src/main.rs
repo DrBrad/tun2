@@ -261,9 +261,6 @@ fn main() -> std::io::Result<()> {
                     ipv4_layer.set_source_address(interface_address);
                     ipv4_layer.compute_checksum();
 
-
-                    let ethernet_frame = packet.get_frame().as_any().downcast_ref::<EthernetFrame>().unwrap();
-
                     interface.write(&packet.to_bytes())?;
                 }
                 _ => {
