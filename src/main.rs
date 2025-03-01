@@ -5,15 +5,18 @@ mod utils;
 use std::io::{Read, Write};
 use std::net::Ipv4Addr;
 use std::os::unix::io::AsRawFd;
+use std::thread;
 use pcap::packet::inter::interfaces::Interfaces;
 use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpExtension;
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
 use pcap::packet::layers::ethernet_frame::inter::types::Types;
+use pcap::packet::layers::ethernet_frame::ip::ipv4_layer::Ipv4Layer;
 use pcap::packet::layers::inter::layer::Layer;
 use pcap::packet::packet::{decode_packet, Packet};
+use crate::interface::Interface;
 use crate::tunnel::Tunnel;
-use crate::utils::interface_utils::{get_mac_address, set_mac_address};
+use crate::utils::interface_utils::{get_address, get_mac, set_mac};
 
 pub const AF_INET: i32 = 2;
 pub const SOCK_DGRAM: i32 = 2;
@@ -181,32 +184,50 @@ const DEFAULT_NET_MASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 
 fn main() -> std::io::Result<()> {
     let tunnel = Tunnel::new("tap0")?;
-    //let interface = Interface::new(DEST_INTERFACE)?;
+    let interface = Interface::new(DEST_INTERFACE)?;
 
     let device_mac = EthernetAddress::new(0xc0, 0xde, 0xb1, 0xee, 0xd0, 0x00);
     let gateway_mac = EthernetAddress::new(0xca, 0x7e, 0xb1, 0xee, 0xd0, 0x00);
     let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
 
-    set_mac_address("tap0", device_mac)?;
+    set_mac("tap0", device_mac)?;
+
     println!("{:?}", device_mac.to_string());
+
+    let interface_mac = get_mac(DEST_INTERFACE)?;
+    let interface_address = get_address(DEST_INTERFACE)?;
+    let interface_gateway_mac = EthernetAddress::new(0x3c, 0x52, 0xa1, 0x12, 0xa4, 0x50);
+
+    println!("{}", interface_mac.to_string());
+    println!("{}", interface_address.to_string());
+    println!("{}", interface_gateway_mac.to_string());
+
+
+    let interface_clone = interface.clone();
+    let tunnel_clone = tunnel.try_clone()?;
+    thread::spawn(move || {
+        loop {
+            let buf = interface_clone.read().unwrap();
+            tunnel_clone.write(&buf);
+        }
+    });
+
 
     loop {
         let buf = tunnel.read()?;
 
-        let packet = decode_packet(Interfaces::Ethernet, &buf);
+        let mut packet = decode_packet(Interfaces::Ethernet, &buf);
 
 
-        let ethernet_frame = packet.get_frame().as_any().downcast_ref::<EthernetFrame>().unwrap();
+        let mut ethernet_frame = packet.get_frame_mut().as_any_mut().downcast_mut::<EthernetFrame>().unwrap();
 
         if ethernet_frame.get_source_mac().eq(&device_mac) {
             match ethernet_frame.get_type() {
                 Types::Arp => {
                     let arp_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<ArpExtension>().unwrap();
 
-                    println!("{:?}", packet);
-
                     if !ethernet_frame.get_destination_mac().eq(&broadcast_mac) {
-                        continue;
+                        continue
                     }
 
                     if arp_layer.get_target_address().eq(&DEFAULT_GATEWAY) {
@@ -229,16 +250,26 @@ fn main() -> std::io::Result<()> {
                         ethernet_frame_r.compute_length();
 
                         tunnel.write(&ethernet_frame_r.to_bytes())?;
+                        continue
                     }
                 }
-                _ => {
+                Types::IPv4 => {
+                    ethernet_frame.set_source_mac(interface_mac.clone());
+                    ethernet_frame.set_destination_mac(interface_gateway_mac.clone());
 
+                    let mut ipv4_layer = ethernet_frame.get_data_mut().unwrap().as_any_mut().downcast_mut::<Ipv4Layer>().unwrap();
+                    ipv4_layer.set_source_address(interface_address);
+                    ipv4_layer.compute_checksum();
+
+
+                    let ethernet_frame = packet.get_frame().as_any().downcast_ref::<EthernetFrame>().unwrap();
+
+                    interface.write(&packet.to_bytes())?;
+                }
+                _ => {
+                    interface.write(&packet.to_bytes())?;
                 }
             }
         }
-
-
-
-
     }
 }

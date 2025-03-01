@@ -4,7 +4,7 @@ use std::os::unix::io::AsRawFd;
 use std::{io, mem};
 use std::os::fd::FromRawFd;
 use crate::{IFF_NO_PI, ifreq, syscall, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP, IFF_TAP, DEFAULT_NET_MASK, DEFAULT_ADDRESS, DEFAULT_GATEWAY};
-use crate::utils::interface_utils::{add_default_route, bring_up, set_ip};
+use crate::utils::interface_utils::{add_default_route, bring_up, set_address};
 
 const TUN_DEVICE: &str = "/dev/net/tun";
 
@@ -32,7 +32,7 @@ impl Tunnel {
             return Err(io::Error::last_os_error());
         }
 
-        set_ip(name, DEFAULT_ADDRESS, DEFAULT_NET_MASK)?;
+        set_address(name, DEFAULT_ADDRESS, DEFAULT_NET_MASK)?;
         bring_up(name)?;
         add_default_route(name, DEFAULT_GATEWAY)?;
 

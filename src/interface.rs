@@ -2,15 +2,13 @@ use std::{io, mem};
 use std::net::Ipv4Addr;
 use std::os::fd::RawFd;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
-use crate::{Ifreq, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ, SYS_READ, SYS_CLOSE};
-use crate::utils::interface_utils::{get_interface_index, get_ip_address, get_mac_address};
+use crate::{AF_PACKET, ETH_P_ALL, SOCK_RAW, sockaddr_ll, syscall, SYS_SENDTO, SYS_SOCKET, SYS_READ};
+use crate::utils::interface_utils::{get_interface_index, get_address, get_mac};
 
 #[derive(Clone)]
 pub struct Interface {
     interface: String,
     interface_index: i32,
-    source_mac: EthernetAddress,
-    source_ip: Ipv4Addr,
     fd: RawFd
 }
 
@@ -18,21 +16,15 @@ impl Interface {
 
     pub fn new(interface: &str) -> io::Result<Self> {
         let fd = unsafe { syscall(SYS_SOCKET, AF_PACKET, SOCK_RAW, (ETH_P_ALL as u16).to_be() as i32) };
-        //let fd = unsafe { socket(AF_PACKET, SOCK_RAW, (ETH_P_ALL as u16).to_be() as i32) };
-        //let fd = unsafe { socket(AF_PACKET, SOCK_RAW, ETH_P_ALL.to_be()) };
         if fd < 0 {
             return Err(io::Error::last_os_error());
         }
 
         let interface_index = get_interface_index(interface)?;
-        let source_mac = get_mac_address(interface)?;
-        let source_ip = get_ip_address(interface)?;
 
         Ok(Self {
             interface: interface.to_string(),
             interface_index,
-            source_mac,
-            source_ip,
             fd
         })
     }
