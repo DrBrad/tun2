@@ -208,7 +208,27 @@ fn main() -> std::io::Result<()> {
     thread::spawn(move || {
         loop {
             let buf = interface_clone.read().unwrap();
-            tunnel_clone.write(&buf);
+            let mut packet = decode_packet(Interfaces::Ethernet, &buf);
+
+            let mut ethernet_frame = packet.get_frame_mut().as_any_mut().downcast_mut::<EthernetFrame>().unwrap();
+
+            if ethernet_frame.get_destination_mac().eq(&interface_mac) {
+                match ethernet_frame.get_type() {
+                    Types::IPv4 => {
+                        ethernet_frame.set_source_mac(gateway_mac);
+                        ethernet_frame.set_destination_mac(device_mac);
+
+                        let mut ipv4_layer = ethernet_frame.get_data_mut().unwrap().as_any_mut().downcast_mut::<Ipv4Layer>().unwrap();
+                        ipv4_layer.set_destination_address(DEFAULT_ADDRESS);
+                        ipv4_layer.compute_checksum();
+
+                        tunnel_clone.write(&packet.to_bytes());
+                    }
+                    _ => {
+                        //interface.write(&packet.to_bytes())?;
+                    }
+                }
+            }
         }
     });
 
@@ -254,8 +274,8 @@ fn main() -> std::io::Result<()> {
                     }
                 }
                 Types::IPv4 => {
-                    ethernet_frame.set_source_mac(interface_mac.clone());
-                    ethernet_frame.set_destination_mac(interface_gateway_mac.clone());
+                    ethernet_frame.set_source_mac(interface_mac);
+                    ethernet_frame.set_destination_mac(interface_gateway_mac);
 
                     let mut ipv4_layer = ethernet_frame.get_data_mut().unwrap().as_any_mut().downcast_mut::<Ipv4Layer>().unwrap();
                     ipv4_layer.set_source_address(interface_address);
