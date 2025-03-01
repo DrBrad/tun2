@@ -231,52 +231,47 @@ fn main() -> std::io::Result<()> {
 
                         match ipv4_layer.get_protocol() {
                             Protocols::Tcp => {
-                                /*
                                 let tcp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<TcpLayer>().unwrap();
                                 match nat_clone.translate_inbound(ipv4_layer.get_protocol(), ipv4_layer.get_destination_address(), tcp_layer.get_destination_port()) {
                                     Some((address, port)) => {
-                                        println!("IN {} {:?}:{} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_destination_address(), port, address);
                                         ipv4_layer.set_destination_address(address);
                                         ipv4_layer.compute_checksum();
                                         tunnel_clone.write(&packet.to_bytes());
                                     }
                                     None => {}
-                                }*/
+                                }
                             }
                             Protocols::Udp => {
-                                /*
                                 let udp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<UdpLayer>().unwrap();
                                 match nat_clone.translate_inbound(ipv4_layer.get_protocol(), ipv4_layer.get_destination_address(), udp_layer.get_destination_port()) {
                                     Some((address, port)) => {
-                                        println!("IN {} {:?}:{} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_destination_address(), port, address);
                                         ipv4_layer.set_destination_address(address);
                                         ipv4_layer.compute_checksum();
                                         tunnel_clone.write(&packet.to_bytes());
                                     }
                                     None => {}
-                                }*/
+                                }
                             }
                             _ => {
-                                /*
                                 match nat_clone.translate_inbound(ipv4_layer.get_protocol(), ipv4_layer.get_destination_address(), 0) {
                                     Some((address, port)) => {
-                                        println!("IN {} {:?} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_destination_address(), address);
                                         ipv4_layer.set_destination_address(address);
                                         ipv4_layer.compute_checksum();
                                         tunnel_clone.write(&packet.to_bytes());
                                     }
                                     None => {}
-                                }*/
+                                }
                             }
                         }
 
 
                     }
                     _ => {
-                        //interface.write(&packet.to_bytes())?;
+                        //tunnel_clone.write(&packet.to_bytes());
                     }
                 }
             }
+            nat_clone.cleanup();
         }
     });
 
@@ -311,6 +306,15 @@ fn main() -> std::io::Result<()> {
                     }
                 }
                 Types::IPv4 => {
+
+                    /*
+                    let ipv4_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<Ipv4Layer>().unwrap();
+
+                    if !ipv4_layer.get_source_address().eq(&DEFAULT_ADDRESS) {
+                        continue
+                    }
+                    */
+
                     ethernet_frame.set_source_mac(interface_mac);
                     ethernet_frame.set_destination_mac(interface_gateway_mac);
 
@@ -318,38 +322,33 @@ fn main() -> std::io::Result<()> {
 
                     match ipv4_layer.get_protocol() {
                         Protocols::Tcp => {
-                            /*
                             let tcp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<TcpLayer>().unwrap();
                             match nat.translate_outbound(ipv4_layer.get_protocol(), ipv4_layer.get_source_address(), tcp_layer.get_source_port(), interface_address, tcp_layer.get_source_port()) {
                                 (address, port) => {
-                                    println!("OUT {} {:?}:{} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_source_address(), port, address);
                                     ipv4_layer.set_source_address(address);
                                 }
                             }
                             ipv4_layer.compute_checksum();
 
-                            interface.write(&packet.to_bytes())?;*/
+                            interface.write(&packet.to_bytes())?;
                         }
                         Protocols::Udp => {
                             let udp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<UdpLayer>().unwrap();
                             match nat.translate_outbound(ipv4_layer.get_protocol(), ipv4_layer.get_source_address(), udp_layer.get_source_port(), interface_address, udp_layer.get_source_port()) {
                                 (address, port) => {
-                                    println!("OUT {} {:?}:{} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_source_address(), port, address);
                                     ipv4_layer.set_source_address(address);
                                 }
                             }
-                            ipv4_layer.set_source_address(interface_address);
                             ipv4_layer.compute_checksum();
 
                             interface.write(&packet.to_bytes())?;
                         }
                         _ => {
-                            /*
                             nat.translate_outbound(ipv4_layer.get_protocol(), ipv4_layer.get_source_address(), 0, interface_address, 0);
                             ipv4_layer.set_source_address(interface_address);
                             ipv4_layer.compute_checksum();
 
-                            interface.write(&packet.to_bytes())?;*/
+                            interface.write(&packet.to_bytes())?;
                         }
                     }
 
@@ -359,5 +358,6 @@ fn main() -> std::io::Result<()> {
                 }
             }
         }
+        nat.cleanup();
     }
 }

@@ -39,12 +39,11 @@ impl Nat {
         self.reverse_mappings.lock().as_ref().unwrap().get(&(protocol, dst_ip, dst_port)).copied()
     }
 
-    /*
     pub fn cleanup(&mut self) {
         let now = Instant::now();
         self.timeouts.lock().as_mut().unwrap().retain(|&key, &mut timestamp| now.duration_since(timestamp) < Duration::from_secs(60));
         self.mappings.lock().as_mut().unwrap().retain(|k, _| self.timeouts.lock().as_ref().unwrap().contains_key(k));
-        self.reverse_mappings.lock().as_mut().unwrap().retain(|_, v| self.timeouts.lock().as_ref().unwrap().contains_key(v));
-    }*/
+        self.reverse_mappings.lock().as_mut().unwrap().retain(|(p, i, s), (d, v)| self.timeouts.lock().as_ref().unwrap().contains_key(&(*p, *d, *v)));
+    }
 }
 
