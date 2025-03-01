@@ -90,7 +90,7 @@ pub fn get_address(interface: &str) -> io::Result<Ipv4Addr> {
     ))
 }
 
-pub fn add_default_route(interface: &str, gateway: Ipv4Addr) -> io::Result<()> {
+pub fn add_default_route(interface: &str, subnet: Ipv4Addr, gateway: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()> {
     let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
     if fd < 0 {
         return Err(io::Error::last_os_error());
@@ -98,6 +98,9 @@ pub fn add_default_route(interface: &str, gateway: Ipv4Addr) -> io::Result<()> {
 
     // Prepare the rtentry structure
     let mut rt: rtentry = unsafe { mem::zeroed() };
+
+
+
 
     // Set the gateway address (rt_gateway)
     let mut sockinfo: sockaddr_in = unsafe { mem::zeroed() };
@@ -108,13 +111,15 @@ pub fn add_default_route(interface: &str, gateway: Ipv4Addr) -> io::Result<()> {
     }
 
     // Set the destination address (rt_dst)
-    sockinfo.sin_addr = INADDR_ANY; // 0.0.0.0
+    //sockinfo.sin_addr = INADDR_ANY; // 0.0.0.0
+    sockinfo.sin_addr = u32::from(subnet).to_be(); // Convert the IP to network byte order
     unsafe {
         ptr::write(&mut rt.rt_dst as *mut _ as *mut sockaddr_in, sockinfo);
     }
 
     // Set the genmask (rt_genmask)
-    sockinfo.sin_addr = INADDR_ANY; // 0.0.0.0
+    //sockinfo.sin_addr = INADDR_ANY; // 0.0.0.0
+    sockinfo.sin_addr = u32::from(netmask).to_be(); // Convert the IP to network byte order
     unsafe {
         ptr::write(&mut rt.rt_genmask as *mut _ as *mut sockaddr_in, sockinfo);
     }

@@ -1,6 +1,7 @@
 mod tunnel;
 mod interface;
 mod utils;
+mod nat;
 
 use std::io::{Read, Write};
 use std::net::Ipv4Addr;
@@ -12,10 +13,14 @@ use pcap::packet::layers::ethernet_frame::arp::inter::arp_operations::ArpOperati
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
 use pcap::packet::layers::ethernet_frame::inter::types::Types;
+use pcap::packet::layers::ethernet_frame::ip::inter::protocols::Protocols;
 use pcap::packet::layers::ethernet_frame::ip::ipv4_layer::Ipv4Layer;
+use pcap::packet::layers::ethernet_frame::ip::tcp::tcp_layer::TcpLayer;
+use pcap::packet::layers::ethernet_frame::ip::udp::udp_layer::UdpLayer;
 use pcap::packet::layers::inter::layer::Layer;
 use pcap::packet::packet::{decode_packet, Packet};
 use crate::interface::Interface;
+use crate::nat::nat::Nat;
 use crate::tunnel::Tunnel;
 use crate::utils::interface_utils::{get_address, get_mac, set_mac};
 
@@ -186,6 +191,7 @@ const DEFAULT_NET_MASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 fn main() -> std::io::Result<()> {
     let tunnel = Tunnel::new("tap0")?;
     let interface = Interface::new(DEST_INTERFACE)?;
+    let mut nat = Nat::new();
 
     let device_mac = EthernetAddress::new(0xc0, 0xde, 0xb1, 0xee, 0xd0, 0x00);
     let gateway_mac = EthernetAddress::new(0xca, 0x7e, 0xb1, 0xee, 0xd0, 0x00);
@@ -206,6 +212,7 @@ fn main() -> std::io::Result<()> {
 
     let interface_clone = interface.clone();
     let tunnel_clone = tunnel.try_clone()?;
+    let mut nat_clone = nat.clone();
     thread::spawn(move || {
         loop {
             let buf = interface_clone.read().unwrap();
@@ -220,10 +227,50 @@ fn main() -> std::io::Result<()> {
                         ethernet_frame.set_destination_mac(device_mac);
 
                         let mut ipv4_layer = ethernet_frame.get_data_mut().unwrap().as_any_mut().downcast_mut::<Ipv4Layer>().unwrap();
-                        ipv4_layer.set_destination_address(DEFAULT_ADDRESS);
-                        ipv4_layer.compute_checksum();
 
-                        tunnel_clone.write(&packet.to_bytes());
+
+                        match ipv4_layer.get_protocol() {
+                            Protocols::Tcp => {
+                                /*
+                                let tcp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<TcpLayer>().unwrap();
+                                match nat_clone.translate_inbound(ipv4_layer.get_protocol(), ipv4_layer.get_destination_address(), tcp_layer.get_destination_port()) {
+                                    Some((address, port)) => {
+                                        println!("IN {} {:?}:{} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_destination_address(), port, address);
+                                        ipv4_layer.set_destination_address(address);
+                                        ipv4_layer.compute_checksum();
+                                        tunnel_clone.write(&packet.to_bytes());
+                                    }
+                                    None => {}
+                                }*/
+                            }
+                            Protocols::Udp => {
+                                /*
+                                let udp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<UdpLayer>().unwrap();
+                                match nat_clone.translate_inbound(ipv4_layer.get_protocol(), ipv4_layer.get_destination_address(), udp_layer.get_destination_port()) {
+                                    Some((address, port)) => {
+                                        println!("IN {} {:?}:{} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_destination_address(), port, address);
+                                        ipv4_layer.set_destination_address(address);
+                                        ipv4_layer.compute_checksum();
+                                        tunnel_clone.write(&packet.to_bytes());
+                                    }
+                                    None => {}
+                                }*/
+                            }
+                            _ => {
+                                /*
+                                match nat_clone.translate_inbound(ipv4_layer.get_protocol(), ipv4_layer.get_destination_address(), 0) {
+                                    Some((address, port)) => {
+                                        println!("IN {} {:?} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_destination_address(), address);
+                                        ipv4_layer.set_destination_address(address);
+                                        ipv4_layer.compute_checksum();
+                                        tunnel_clone.write(&packet.to_bytes());
+                                    }
+                                    None => {}
+                                }*/
+                            }
+                        }
+
+
                     }
                     _ => {
                         //interface.write(&packet.to_bytes())?;
@@ -252,6 +299,7 @@ fn main() -> std::io::Result<()> {
                     }
 
                     if arp_layer.get_target_address().eq(&DEFAULT_GATEWAY) {
+                        println!("ARP");
                         let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), gateway_mac, Types::Arp);
                         let mut arp_layer_r = ArpExtension::new(ArpOperations::Reply, gateway_mac, DEFAULT_GATEWAY, arp_layer.get_sender_mac(), arp_layer.get_sender_address());
                         arp_layer_r.compute_length();
@@ -260,7 +308,6 @@ fn main() -> std::io::Result<()> {
                         ethernet_frame_r.compute_length();
 
                         tunnel.write(&ethernet_frame_r.to_bytes())?;
-                        continue
                     }
                 }
                 Types::IPv4 => {
@@ -268,13 +315,47 @@ fn main() -> std::io::Result<()> {
                     ethernet_frame.set_destination_mac(interface_gateway_mac);
 
                     let mut ipv4_layer = ethernet_frame.get_data_mut().unwrap().as_any_mut().downcast_mut::<Ipv4Layer>().unwrap();
-                    ipv4_layer.set_source_address(interface_address);
-                    ipv4_layer.compute_checksum();
 
-                    interface.write(&packet.to_bytes())?;
+                    match ipv4_layer.get_protocol() {
+                        Protocols::Tcp => {
+                            /*
+                            let tcp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<TcpLayer>().unwrap();
+                            match nat.translate_outbound(ipv4_layer.get_protocol(), ipv4_layer.get_source_address(), tcp_layer.get_source_port(), interface_address, tcp_layer.get_source_port()) {
+                                (address, port) => {
+                                    println!("OUT {} {:?}:{} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_source_address(), port, address);
+                                    ipv4_layer.set_source_address(address);
+                                }
+                            }
+                            ipv4_layer.compute_checksum();
+
+                            interface.write(&packet.to_bytes())?;*/
+                        }
+                        Protocols::Udp => {
+                            let udp_layer = ipv4_layer.get_data().unwrap().as_any().downcast_ref::<UdpLayer>().unwrap();
+                            match nat.translate_outbound(ipv4_layer.get_protocol(), ipv4_layer.get_source_address(), udp_layer.get_source_port(), interface_address, udp_layer.get_source_port()) {
+                                (address, port) => {
+                                    println!("OUT {} {:?}:{} > {:?}", ipv4_layer.get_protocol().to_string(), ipv4_layer.get_source_address(), port, address);
+                                    ipv4_layer.set_source_address(address);
+                                }
+                            }
+                            ipv4_layer.set_source_address(interface_address);
+                            ipv4_layer.compute_checksum();
+
+                            interface.write(&packet.to_bytes())?;
+                        }
+                        _ => {
+                            /*
+                            nat.translate_outbound(ipv4_layer.get_protocol(), ipv4_layer.get_source_address(), 0, interface_address, 0);
+                            ipv4_layer.set_source_address(interface_address);
+                            ipv4_layer.compute_checksum();
+
+                            interface.write(&packet.to_bytes())?;*/
+                        }
+                    }
+
                 }
                 _ => {
-                    interface.write(&packet.to_bytes())?;
+                    //interface.write(&packet.to_bytes())?;
                 }
             }
         }

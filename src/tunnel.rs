@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::os::unix::io::AsRawFd;
 use std::{io, mem};
+use std::net::Ipv4Addr;
 use std::os::fd::FromRawFd;
 use crate::{IFF_NO_PI, ifreq, syscall, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP, IFF_TAP, DEFAULT_NET_MASK, DEFAULT_ADDRESS, DEFAULT_GATEWAY};
 use crate::utils::interface_utils::{add_default_route, bring_up, set_address};
@@ -34,7 +35,8 @@ impl Tunnel {
 
         set_address(name, DEFAULT_ADDRESS, DEFAULT_NET_MASK)?;
         bring_up(name)?;
-        add_default_route(name, DEFAULT_GATEWAY)?;
+        //add_default_route(name, Ipv4Addr::new(10, 0, 0, 0), DEFAULT_GATEWAY, DEFAULT_NET_MASK)?;
+        add_default_route(name, Ipv4Addr::new(0, 0, 0, 0), DEFAULT_GATEWAY, Ipv4Addr::new(0, 0, 0, 0))?;
 
         Ok(Self {
             file
