@@ -1,29 +1,17 @@
-//mod types;
 mod tunnel;
 mod interface;
 mod utils;
 
 use std::io::{Read, Write};
-use std::net::{IpAddr, Ipv4Addr};
+use std::net::Ipv4Addr;
 use std::os::unix::io::AsRawFd;
-use std::thread;
 use pcap::packet::inter::interfaces::Interfaces;
 use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpExtension;
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
 use pcap::packet::layers::ethernet_frame::inter::types::Types;
-use pcap::packet::layers::ethernet_frame::ip::inter::protocols::Protocols;
-use pcap::packet::layers::ethernet_frame::ip::ipv4_layer::Ipv4Layer;
-use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::dhcp_layer::DhcpLayer;
-use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_cookie::DhcpCookie;
-use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_message_types::DhcpMessageTypes;
-use pcap::packet::layers::ethernet_frame::ip::udp::dhcp::inter::dhcp_operations::DhcpOperations;
-use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_payloads::UdpPayloads;
-use pcap::packet::layers::ethernet_frame::ip::udp::inter::udp_types::UdpTypes;
-use pcap::packet::layers::ethernet_frame::ip::udp::udp_layer::UdpLayer;
 use pcap::packet::layers::inter::layer::Layer;
 use pcap::packet::packet::{decode_packet, Packet};
-use crate::interface::Interface;
 use crate::tunnel::Tunnel;
 
 pub const AF_INET: i32 = 2;
@@ -191,12 +179,7 @@ fn main() -> std::io::Result<()> {
     let tunnel = Tunnel::new("tap0")?;
     //let interface = Interface::new(DEST_INTERFACE)?;
 
-
     let gateway_mac = EthernetAddress::new(0x00, 0x10, 0xFA, 0x63, 0x38, 0x4a);
-
-    let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
-    let broadcast_ip = Ipv4Addr::new(255, 255, 255, 255);
-
 
     loop {
         let buf = tunnel.read()?;

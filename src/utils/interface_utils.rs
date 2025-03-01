@@ -10,7 +10,6 @@ pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()
         return Err(io::Error::last_os_error());
     }
 
-
     let mut ifr: ifreq = unsafe { mem::zeroed() };
     //let name_bytes = interface.as_bytes();
     //ifr.ifr_name[..name_bytes.len()].copy_from_slice(name_bytes);
@@ -54,7 +53,6 @@ pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()
 
     Ok(())
 }
-
 
 pub fn add_default_route(interface: &str, gateway: Ipv4Addr) -> io::Result<()> {
     let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
