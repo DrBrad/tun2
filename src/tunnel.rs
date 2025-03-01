@@ -3,9 +3,11 @@ use std::io::{Read, Write};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::net::{IpAddr, Ipv4Addr, UdpSocket};
 use std::{io, mem, thread};
+use std::ffi::CString;
 use std::os::fd::FromRawFd;
-use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP, IFF_TAP};
-use crate::utils::ip_utils::compute_checksum;
+use libc::{c_char, c_short, in_addr, SIOCADDRT};
+use crate::{NEW_DEST_IP, AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP, IFF_TAP, sockaddr, IFNAMSIZ};
+use crate::utils::ip_utils::{add_gateway, compute_checksum};
 
 const TUN_DEVICE: &str = "/dev/net/tun";
 
@@ -35,8 +37,9 @@ impl Tunnel {
             return Err(io::Error::last_os_error());
         }
 
-        //set_ip(name, NEW_DEST_IP)?;
+        set_ip(name, NEW_DEST_IP)?;
         bring_up(name)?;
+        add_gateway(name, Ipv4Addr::new(10, 0, 0, 1))?;
 
         Ok(Self {
             file
@@ -100,16 +103,29 @@ impl Tunnel {
 }
 
 
+
+
+
+
+
+
 fn set_ip(interface: &str, ip: Ipv4Addr) -> io::Result<()> {
     let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
     if fd < 0 {
         return Err(io::Error::last_os_error());
     }
 
+
+
+
+
+
+
+
+
     let mut ifr: ifreq = unsafe { mem::zeroed() };
     //let name_bytes = interface.as_bytes();
     //ifr.ifr_name[..name_bytes.len()].copy_from_slice(name_bytes);
-
 
     let name_bytes = interface.as_bytes();
     let name_i8: Vec<i8> = name_bytes.iter().map(|&b| b as i8).collect();
@@ -129,6 +145,37 @@ fn set_ip(interface: &str, ip: Ipv4Addr) -> io::Result<()> {
     if ret < 0 {
         return Err(io::Error::last_os_error());
     }
+
+
+
+
+
+
+
+    let netmask = Ipv4Addr::new(255, 255, 255, 0);
+
+
+    // Convert netmask to sockaddr_in (for netmask)
+    let mut sockaddr_mask: libc::sockaddr_in = unsafe { mem::zeroed() };
+    sockaddr_mask.sin_family = AF_INET as u16;
+    sockaddr_mask.sin_addr.s_addr = u32::from(netmask).to_be();
+
+    // Copy sockaddr_in netmask into ifr structure
+    unsafe {
+        let addr_ptr = &sockaddr_mask as *const _ as *const u8;
+        std::ptr::copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut u8, mem::size_of::<sockaddr_in>());
+    }
+
+    // Set the netmask
+    let ret = unsafe { syscall(SYS_IOCTL, fd, libc::SIOCSIFNETMASK, &ifr) };
+    if ret < 0 {
+        return Err(io::Error::last_os_error());
+    }
+
+
+
+
+
 
     Ok(())
 }

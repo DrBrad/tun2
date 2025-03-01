@@ -151,7 +151,7 @@ const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
 
 const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x02]; // Replace with actual MAC address
 const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
-const NEW_DEST_IP: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 25);
+const NEW_DEST_IP: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 2);
 
 /*
 sudo ip addr add 10.0.0.1/24 dev tun0
@@ -182,55 +182,14 @@ fn main() -> std::io::Result<()> {
     let tunnel = Tunnel::new("tap0")?;
     //let interface = Interface::new(DEST_INTERFACE)?;
 
-    /*
-    let interface_clone = interface.clone();
-    let tunnel_clone = tunnel.try_clone()?;
-    thread::spawn(move || {
-        loop {
-            match interface_clone.read() {
-                Ok(buf) => {
-                    if buf.len() > 14 {
-                        tunnel_clone.write(&buf[14..]);
-                    }
-                }
-                Err(_) => {}
-            }
-        }
-    });
-    */
-    /*
-    ARP
-
-    Request
-    Source
-    Destination
-
-    SenderMac = Source
-    SenderIP = Source IP
-    TargetMac = NULL
-    TargetIP = Requested IP
-
-
-    Reply
-    Source
-    Destination
-
-    SenderMac = Source
-    SenderIp = Source IP
-    TargetMac = Requesters Mac
-    TargetIP = Requested IP
-
-    */
-
-    //let device_mac = EthernetAddress::new(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
-    //let nat_mac = EthernetAddress::new(0xaa, 0xbb, 0xff, 0xdd, 0xee, 0xff);
-    //let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
-
 
     let gateway_mac = EthernetAddress::new(0x00, 0x10, 0xFA, 0x63, 0x38, 0x4a);
 
     let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
     let broadcast_ip = Ipv4Addr::new(255, 255, 255, 255);
+
+
+    //add_default_route("tap0", Ipv4Addr::new(10, 0, 0, 1))?;
 
     loop {
         let buf = tunnel.read()?;
@@ -239,6 +198,7 @@ fn main() -> std::io::Result<()> {
 
 
 
+        /*
         let ethernet_frame = packet.get_frame().as_any().downcast_ref::<EthernetFrame>().unwrap();
         match ethernet_frame.get_type() {
             Types::IPv4 => {
@@ -356,6 +316,8 @@ fn main() -> std::io::Result<()> {
             Types::IPv6 => {}
             Types::Broadcast => {}
         }
+
+        */
     }
 }
 
