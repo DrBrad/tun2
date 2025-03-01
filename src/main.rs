@@ -7,6 +7,7 @@ use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::unix::io::AsRawFd;
 use std::thread;
+use libc::{c_ulong, in_addr_t};
 use pcap::packet::inter::interfaces::Interfaces;
 use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpExtension;
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
@@ -53,7 +54,8 @@ pub const SYS_READ: i32 = 0; // System call number for read on x86_64 Linux
 pub const SYS_WRITE: i32 = 1; // System call number for read on x86_64 Linux
 pub const SYS_CLOSE: i32 = 3; // System call number for read on x86_64 Linux
 pub const SYS_DUP: i32 = 32; // System call number for read on x86_64 Linux
-
+pub const INADDR_ANY: u32 = 0;
+pub const SIOCADDRT: i32 = 0x0000890B;
 
 
 #[repr(C)]
@@ -139,6 +141,7 @@ struct sockaddr_in {
     sin_zero: [i8; 8],
 }
 
+// - USE SAME syscall as we do with PCAP
 extern "C" {
     fn syscall(number: i32, ...) -> i32;
 }

@@ -2,8 +2,8 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::Ipv4Addr;
 use std::ptr::copy_nonoverlapping;
-use libc::{rtentry, INADDR_ANY, SIOCADDRT};
-use crate::{ifreq, sockaddr_in, syscall, AF_INET, IFF_RUNNING, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, SYS_IOCTL, SYS_SOCKET};
+use libc::{rtentry};
+use crate::{ifreq, sockaddr_in, syscall, AF_INET, IFF_RUNNING, IFF_UP, INADDR_ANY, SIOCADDRT, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, SYS_IOCTL, SYS_SOCKET};
 
 pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()> {
     let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
