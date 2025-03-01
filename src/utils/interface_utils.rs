@@ -1,7 +1,8 @@
 use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::Ipv4Addr;
-use libc::{ioctl, rtentry, socket, INADDR_ANY, SIOCADDRT};
+use std::ptr::copy_nonoverlapping;
+use libc::{rtentry, INADDR_ANY, SIOCADDRT};
 use crate::{ifreq, sockaddr_in, syscall, AF_INET, IFF_RUNNING, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, SYS_IOCTL, SYS_SOCKET};
 
 pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()> {
@@ -26,7 +27,7 @@ pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()
 
     unsafe {
         let addr_ptr = &sockaddr as *const _ as *const u8;
-        std::ptr::copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut u8, mem::size_of::<sockaddr_in>());
+        copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut u8, mem::size_of::<sockaddr_in>());
     }
 
     let ret = unsafe { syscall(SYS_IOCTL, fd, SIOCSIFADDR, &ifr) };
@@ -47,7 +48,7 @@ pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()
 
     unsafe {
         let addr_ptr = &sockaddr_mask as *const _ as *const u8;
-        std::ptr::copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut u8, mem::size_of::<sockaddr_in>());
+        copy_nonoverlapping(addr_ptr, &mut ifr.ifr_ifru as *mut _ as *mut u8, mem::size_of::<sockaddr_in>());
     }
 
     // Set the netmask
@@ -56,14 +57,16 @@ pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()
         return Err(io::Error::last_os_error());
     }
 
+    // Close the socket
+    unsafe { libc::close(fd) };
+
     Ok(())
 }
 
 
 pub fn add_default_route(interface: &str, gateway: Ipv4Addr) -> io::Result<()> {
-    // Create a socket for communication (AF_INET for IPv4)
-    let sockfd = unsafe { socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
-    if sockfd < 0 {
+    let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
+    if fd < 0 {
         return Err(io::Error::last_os_error());
     }
 
@@ -98,13 +101,13 @@ pub fn add_default_route(interface: &str, gateway: Ipv4Addr) -> io::Result<()> {
     rt.rt_dev = c_str.into_raw();
 
     // Add the route using ioctl
-    let result = unsafe { ioctl(sockfd, SIOCADDRT, &rt) };
+    let result = unsafe { syscall(SYS_IOCTL, fd, SIOCADDRT, &rt) };
     if result < 0 {
         return Err(io::Error::last_os_error());
     }
 
     // Close the socket
-    unsafe { libc::close(sockfd) };
+    unsafe { libc::close(fd) };
 
     Ok(())
 }
@@ -126,6 +129,9 @@ pub fn bring_up(interface: &str) -> io::Result<()> {
     if ret < 0 {
         return Err(io::Error::last_os_error());
     }
+
+    // Close the socket
+    unsafe { libc::close(fd) };
 
     Ok(())
 }

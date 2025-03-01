@@ -1,17 +1,12 @@
 use std::fs::File;
 use std::io::{Read, Write};
-use std::os::unix::io::{AsRawFd, RawFd};
-use std::net::{IpAddr, Ipv4Addr, UdpSocket};
-use std::{io, mem, thread};
-use std::ffi::CString;
+use std::os::unix::io::AsRawFd;
+use std::{io, mem};
 use std::os::fd::FromRawFd;
-use libc::{c_char, c_short, in_addr, SIOCADDRT};
-use crate::{AF_INET, IFF_NO_PI, IFF_RUNNING, IFF_TUN, IFF_UP, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, ifreq, sockaddr_in, syscall, SYS_SOCKET, AF_PACKET, SOCK_RAW, ETH_P_ALL, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP, IFF_TAP, sockaddr, IFNAMSIZ, DEFAULT_NET_MASK, DEFAULT_ADDRESS, DEFAULT_GATEWAY};
+use crate::{IFF_NO_PI, ifreq, syscall, SYS_IOCTL, SYS_READ, SYS_WRITE, SYS_DUP, IFF_TAP, DEFAULT_NET_MASK, DEFAULT_ADDRESS, DEFAULT_GATEWAY};
 use crate::utils::interface_utils::{add_default_route, bring_up, set_ip};
 
 const TUN_DEVICE: &str = "/dev/net/tun";
-
-
 
 //#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct Tunnel {
@@ -59,26 +54,6 @@ impl Tunnel {
     }
 
     pub fn write(&self, packet: &[u8]) -> io::Result<()> {
-        /*
-        let mut packet = packet.to_vec();
-        if packet.len() < 20 {
-            return Err(io::Error::new(io::ErrorKind::Other, "Packet length too small")); // Too short to be an IPv4 packet
-        }
-
-        let ihl = (packet[0] & 0x0F) as usize * 4; // Internet Header Length (IHL)
-        if ihl < 20 || ihl > packet.len() {
-            return Err(io::Error::new(io::ErrorKind::Other, "Packet has invalid IHL")); // Too short to be an IPv4 packet
-        }
-
-        packet[16..20].copy_from_slice(&NEW_DEST_IP.octets());
-
-        packet[10] = 0;
-        packet[11] = 0;
-
-        let checksum = compute_checksum(&packet[..ihl]);
-        packet[10..12].copy_from_slice(&checksum.to_be_bytes());
-        */
-
         let len = unsafe { syscall(SYS_WRITE, self.file.as_raw_fd(), packet.as_ptr() as *const _, packet.len()) };
 
         if len < 0 {
@@ -101,9 +76,3 @@ impl Tunnel {
         })
     }
 }
-
-
-
-
-
-
