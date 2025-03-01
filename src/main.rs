@@ -13,6 +13,7 @@ use pcap::packet::layers::ethernet_frame::inter::types::Types;
 use pcap::packet::layers::inter::layer::Layer;
 use pcap::packet::packet::{decode_packet, Packet};
 use crate::tunnel::Tunnel;
+use crate::utils::interface_utils::{get_mac_address, set_mac_address};
 
 pub const AF_INET: i32 = 2;
 pub const SOCK_DGRAM: i32 = 2;
@@ -44,6 +45,8 @@ pub const SYS_DUP: i32 = 32; // System call number for read on x86_64 Linux
 pub const INADDR_ANY: u32 = 0;
 pub const SIOCADDRT: i32 = 0x0000890B;
 pub const SIOCSIFNETMASK: u64 = 0x0000891C;
+pub const SIOCSIFHWADDR: u64 = 0x00008924;
+pub const SIOCGIFINDEX: u64 = 0x00008933;
 
 pub const RTF_UP: u16 = 0x0001;
 pub const RTF_GATEWAY: u16 = 0x0002;
@@ -180,7 +183,12 @@ fn main() -> std::io::Result<()> {
     let tunnel = Tunnel::new("tap0")?;
     //let interface = Interface::new(DEST_INTERFACE)?;
 
-    let gateway_mac = EthernetAddress::new(0x00, 0x10, 0xFA, 0x63, 0x38, 0x4a);
+    let device_mac = EthernetAddress::new(0xc0, 0xde, 0xb1, 0xee, 0xd0, 0x00);
+    let gateway_mac = EthernetAddress::new(0xca, 0x7e, 0xb1, 0xee, 0xd0, 0x00);
+    let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
+
+    set_mac_address("tap0", device_mac)?;
+    println!("{:?}", device_mac.to_string());
 
     loop {
         let buf = tunnel.read()?;
@@ -189,39 +197,48 @@ fn main() -> std::io::Result<()> {
 
 
         let ethernet_frame = packet.get_frame().as_any().downcast_ref::<EthernetFrame>().unwrap();
-        match ethernet_frame.get_type() {
-            Types::IPv4 => {}
-            Types::Arp => {
-                let arp_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<ArpExtension>().unwrap();
 
-                if !ethernet_frame.get_destination_mac().eq(&gateway_mac) && arp_layer.get_target_address().eq(&Ipv4Addr::new(10, 0, 0, 1)) {
-                    let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), gateway_mac, Types::Arp);
-                    let mut arp_layer_r = ArpExtension {
-                        hardware_type: 1,
-                        protocol_type: 0x0800,
-                        hardware_size: 6,
-                        protocol_size: 4,
-                        opcode: 2,
-                        sender_mac: gateway_mac,
-                        sender_address: Ipv4Addr::new(10, 0, 0, 1),
-                        target_mac: arp_layer.get_sender_mac(),
-                        target_address: arp_layer.get_sender_address(),
-                    };
+        if ethernet_frame.get_source_mac().eq(&device_mac) {
+            match ethernet_frame.get_type() {
+                Types::Arp => {
+                    let arp_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<ArpExtension>().unwrap();
 
-                    arp_layer_r.compute_length();
-                    ethernet_frame_r.set_data(Box::new(arp_layer_r));
+                    println!("{:?}", packet);
 
-                    ethernet_frame_r.compute_length();
+                    if !ethernet_frame.get_destination_mac().eq(&broadcast_mac) {
+                        continue;
+                    }
 
-                    tunnel.write(&ethernet_frame_r.to_bytes())?;
+                    if arp_layer.get_target_address().eq(&DEFAULT_GATEWAY) {
+                        let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), gateway_mac, Types::Arp);
+                        let mut arp_layer_r = ArpExtension {
+                            hardware_type: 1,
+                            protocol_type: 0x0800,
+                            hardware_size: 6,
+                            protocol_size: 4,
+                            opcode: 2,
+                            sender_mac: gateway_mac,
+                            sender_address: Ipv4Addr::new(10, 0, 0, 1),
+                            target_mac: arp_layer.get_sender_mac(),
+                            target_address: arp_layer.get_sender_address(),
+                        };
 
+                        arp_layer_r.compute_length();
+                        ethernet_frame_r.set_data(Box::new(arp_layer_r));
 
-                    //send_arp_reply("tap0", gateway_mac, Ipv4Addr::new(10, 0, 0, 1), arp_layer.get_sender_mac(), arp_layer.get_sender_address());
+                        ethernet_frame_r.compute_length();
+
+                        tunnel.write(&ethernet_frame_r.to_bytes())?;
+                    }
+                }
+                _ => {
+
                 }
             }
-            Types::IPv6 => {}
-            Types::Broadcast => {}
         }
+
+
+
 
     }
 }
