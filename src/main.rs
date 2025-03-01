@@ -9,6 +9,7 @@ use std::os::unix::io::AsRawFd;
 use std::thread;
 use pcap::packet::inter::interfaces::Interfaces;
 use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpExtension;
+use pcap::packet::layers::ethernet_frame::arp::inter::arp_operations::ArpOperations;
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
 use pcap::packet::layers::ethernet_frame::inter::ethernet_address::EthernetAddress;
 use pcap::packet::layers::ethernet_frame::inter::types::Types;
@@ -329,6 +330,7 @@ fn main() -> std::io::Result<()> {
                 let arp_layer = ethernet_frame.get_data().unwrap().as_any().downcast_ref::<ArpExtension>().unwrap();
 
                 if !ethernet_frame.get_destination_mac().eq(&gateway_mac) && arp_layer.get_target_address().eq(&Ipv4Addr::new(10, 0, 0, 1)) {
+                    /*
                     let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), gateway_mac, Types::Arp);
                     let mut arp_layer_r = ArpExtension {
                         hardware_type: 1,
@@ -347,8 +349,19 @@ fn main() -> std::io::Result<()> {
 
                     ethernet_frame_r.compute_length();
 
-                    tunnel.write(&ethernet_frame_r.to_bytes())?;
+                    tunnel.write(&ethernet_frame_r.to_bytes())?;*/
 
+
+
+
+                    let mut ethernet_frame_r = EthernetFrame::new(ethernet_frame.get_source_mac(), gateway_mac, Types::Arp);
+                    let mut arp_layer_r = ArpExtension::new(ArpOperations::Reply, gateway_mac, Ipv4Addr::new(10, 0, 0, 1), arp_layer.get_sender_mac(), arp_layer.get_sender_address());
+                    arp_layer_r.compute_length();
+                    ethernet_frame_r.set_data(Box::new(arp_layer_r));
+
+                    ethernet_frame_r.compute_length();
+
+                    tunnel.write(&ethernet_frame_r.to_bytes())?;
 
                     //send_arp_reply("tap0", gateway_mac, Ipv4Addr::new(10, 0, 0, 1), arp_layer.get_sender_mac(), arp_layer.get_sender_address());
                 }
