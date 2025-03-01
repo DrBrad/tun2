@@ -2,8 +2,7 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::Ipv4Addr;
 use std::ptr::copy_nonoverlapping;
-use libc::{rtentry};
-use crate::{ifreq, sockaddr_in, syscall, AF_INET, IFF_RUNNING, IFF_UP, INADDR_ANY, SIOCADDRT, SIOCSIFADDR, SIOCSIFFLAGS, SOCK_DGRAM, SYS_IOCTL, SYS_SOCKET};
+use crate::{ifreq, rtentry, sockaddr_in, syscall, AF_INET, IFF_RUNNING, IFF_UP, INADDR_ANY, RTF_GATEWAY, RTF_UP, SIOCADDRT, SIOCSIFADDR, SIOCSIFFLAGS, SIOCSIFNETMASK, SOCK_DGRAM, SYS_CLOSE, SYS_IOCTL, SYS_SOCKET};
 
 pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()> {
     let fd = unsafe { syscall(SYS_SOCKET, AF_INET, SOCK_DGRAM, 0) };
@@ -35,16 +34,10 @@ pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()
         return Err(io::Error::last_os_error());
     }
 
-
-
-
-
-
-
     // Convert netmask to sockaddr_in (for netmask)
-    let mut sockaddr_mask: libc::sockaddr_in = unsafe { mem::zeroed() };
+    let mut sockaddr_mask: sockaddr_in = unsafe { mem::zeroed() };
     sockaddr_mask.sin_family = AF_INET as u16;
-    sockaddr_mask.sin_addr.s_addr = u32::from(netmask).to_be();
+    sockaddr_mask.sin_addr = u32::from(netmask).to_be();
 
     unsafe {
         let addr_ptr = &sockaddr_mask as *const _ as *const u8;
@@ -52,13 +45,12 @@ pub fn set_ip(interface: &str, ip: Ipv4Addr, netmask: Ipv4Addr) -> io::Result<()
     }
 
     // Set the netmask
-    let ret = unsafe { syscall(SYS_IOCTL, fd, libc::SIOCSIFNETMASK, &ifr) };
+    let ret = unsafe { syscall(SYS_IOCTL, fd, SIOCSIFNETMASK, &ifr) };
     if ret < 0 {
         return Err(io::Error::last_os_error());
     }
 
-    // Close the socket
-    unsafe { libc::close(fd) };
+    unsafe { syscall(SYS_CLOSE, fd) };
 
     Ok(())
 }
@@ -74,27 +66,27 @@ pub fn add_default_route(interface: &str, gateway: Ipv4Addr) -> io::Result<()> {
     let mut rt: rtentry = unsafe { mem::zeroed() };
 
     // Set the gateway address (rt_gateway)
-    let mut sockinfo: libc::sockaddr_in = unsafe { mem::zeroed() };
-    sockinfo.sin_family = libc::AF_INET as u16;
-    sockinfo.sin_addr.s_addr = u32::from(gateway).to_be(); // Convert the IP to network byte order
+    let mut sockinfo: sockaddr_in = unsafe { mem::zeroed() };
+    sockinfo.sin_family = AF_INET as u16;
+    sockinfo.sin_addr = u32::from(gateway).to_be(); // Convert the IP to network byte order
     unsafe {
-        ptr::write(&mut rt.rt_gateway as *mut _ as *mut libc::sockaddr_in, sockinfo);
+        ptr::write(&mut rt.rt_gateway as *mut _ as *mut sockaddr_in, sockinfo);
     }
 
     // Set the destination address (rt_dst)
-    sockinfo.sin_addr.s_addr = INADDR_ANY; // 0.0.0.0
+    sockinfo.sin_addr = INADDR_ANY; // 0.0.0.0
     unsafe {
-        ptr::write(&mut rt.rt_dst as *mut _ as *mut libc::sockaddr_in, sockinfo);
+        ptr::write(&mut rt.rt_dst as *mut _ as *mut sockaddr_in, sockinfo);
     }
 
     // Set the genmask (rt_genmask)
-    sockinfo.sin_addr.s_addr = INADDR_ANY; // 0.0.0.0
+    sockinfo.sin_addr = INADDR_ANY; // 0.0.0.0
     unsafe {
-        ptr::write(&mut rt.rt_genmask as *mut _ as *mut libc::sockaddr_in, sockinfo);
+        ptr::write(&mut rt.rt_genmask as *mut _ as *mut sockaddr_in, sockinfo);
     }
 
     // Set flags for the route
-    rt.rt_flags = libc::RTF_UP | libc::RTF_GATEWAY;
+    rt.rt_flags = RTF_UP | RTF_GATEWAY;
 
     // Set the device name (e.g., "eth0")
     let c_str = CString::new(interface).unwrap();
@@ -106,8 +98,7 @@ pub fn add_default_route(interface: &str, gateway: Ipv4Addr) -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
 
-    // Close the socket
-    unsafe { libc::close(fd) };
+    unsafe { syscall(SYS_CLOSE, fd) };
 
     Ok(())
 }
@@ -130,8 +121,7 @@ pub fn bring_up(interface: &str) -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
 
-    // Close the socket
-    unsafe { libc::close(fd) };
+    unsafe { syscall(SYS_CLOSE, fd) };
 
     Ok(())
 }

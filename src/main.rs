@@ -7,7 +7,6 @@ use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::unix::io::AsRawFd;
 use std::thread;
-use libc::{c_ulong, in_addr_t};
 use pcap::packet::inter::interfaces::Interfaces;
 use pcap::packet::layers::ethernet_frame::arp::arp_extension::ArpExtension;
 use pcap::packet::layers::ethernet_frame::ethernet_frame::EthernetFrame;
@@ -56,6 +55,12 @@ pub const SYS_CLOSE: i32 = 3; // System call number for read on x86_64 Linux
 pub const SYS_DUP: i32 = 32; // System call number for read on x86_64 Linux
 pub const INADDR_ANY: u32 = 0;
 pub const SIOCADDRT: i32 = 0x0000890B;
+pub const SIOCSIFNETMASK: u64 = 0x0000891C;
+
+pub const RTF_UP: u16 = 0x0001;
+pub const RTF_GATEWAY: u16 = 0x0002;
+
+
 
 
 #[repr(C)]
@@ -116,7 +121,28 @@ pub struct ifreq {
     pub ifr_ifru: __c_anonymous_ifr_ifru,
 }
 
-
+#[repr(C)]
+#[derive(Debug)]
+pub struct rtentry {
+    pub rt_pad1: u64,
+    pub rt_dst: sockaddr,
+    pub rt_gateway: sockaddr,
+    pub rt_genmask: sockaddr,
+    pub rt_flags: u16,
+    pub rt_pad2: i16,
+    pub rt_pad3: u64,
+    pub rt_tos: u8,
+    pub rt_class: u8,
+    #[cfg(target_pointer_width = "64")]
+    pub rt_pad4: [i16; 3usize],
+    #[cfg(not(target_pointer_width = "64"))]
+    pub rt_pad4: c_short,
+    pub rt_metric: i16,
+    pub rt_dev: *mut i8,
+    pub rt_mtu: u64,
+    pub rt_window: u64,
+    pub rt_irtt: u16,
+}
 
 
 
@@ -133,7 +159,7 @@ struct Ifreq {
 
 // Structure to store sockaddr_in (IPv4 address)
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct sockaddr_in {
     sin_family: u16,
     sin_port: u16,
