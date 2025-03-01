@@ -149,34 +149,14 @@ extern "C" {
 
 const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
 
-const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x02]; // Replace with actual MAC address
-const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
-const NEW_DEST_IP: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 2);
-
-/*
-sudo ip addr add 10.0.0.1/24 dev tun0
-sudo ip link set dev tun0 up
-sudo ip route add default via 10.0.0.1 dev tun0
-
-ping -I tun0 8.8.8.8
-sudo tcpdump -i wlp7s0
-
-sudo ip addr add 172.16.0.25/16 dev tap0
-sudo ip link set dev tap0 address aa:bb:cc:dd:ee:ff
-sudo ip link set dev tap0 up
+//const DEST_MAC: [u8; 6] = [0xe6, 0x38, 0x83, 0x2e, 0xf3, 0x02]; // Replace with actual MAC address
+//const ETHERTYPE_IPV4: [u8; 2] = [0x08, 0x00]; // IPv4 EtherType
 
 
+const DEFAULT_GATEWAY: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 1);
+const DEFAULT_ADDRESS: Ipv4Addr = Ipv4Addr::new(10, 0, 0, 2);
+const DEFAULT_NET_MASK: Ipv4Addr = Ipv4Addr::new(255, 255, 255, 0);
 
-sudo dhclient tap0
-tail -100 /var/log/syslog
-
-
-sudo ip route add default via 172.16.0.1 dev tap0
-
-sudo ip neigh add 10.0.0.1 lladdr 00:10:FA:63:38:4a dev tap0
-
-sudo ip neigh add 8.8.8.8 lladdr ff:ee:dd:ff:ee:dd dev tap0
-*/
 
 fn main() -> std::io::Result<()> {
     let tunnel = Tunnel::new("tap0")?;
@@ -188,8 +168,6 @@ fn main() -> std::io::Result<()> {
     let broadcast_mac = EthernetAddress::new(0xff, 0xff, 0xff, 0xff, 0xff, 0xff);
     let broadcast_ip = Ipv4Addr::new(255, 255, 255, 255);
 
-
-    //add_default_route("tap0", Ipv4Addr::new(10, 0, 0, 1))?;
 
     loop {
         let buf = tunnel.read()?;
@@ -234,112 +212,3 @@ fn main() -> std::io::Result<()> {
 
     }
 }
-
-
-
-
-
-pub fn generate_dhcp_offer(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
-    let mut options = Vec::new();
-
-    // DHCP Message Type: ACK (Option 53, Length 1, Value 5)
-    options.extend_from_slice(&[53, 1, DhcpMessageTypes::Offer.get_code()]);
-
-    // Subnet Mask: 255.255.255.0 (Option 1, Length 4)
-    options.extend_from_slice(&[1, 4, 255, 255, 255, 0]);
-
-    // Router (Gateway): 10.0.0.1 (Option 3, Length 4)
-    options.extend_from_slice(&[3, 4, 10, 0, 0, 1]);
-
-    // DNS Server: 8.8.8.8 (Option 6, Length 4)
-    options.extend_from_slice(&[6, 4, 8, 8, 8, 8]);
-
-    // Server Identifier: 10.0.0.1 (Option 54, Length 4)
-    options.extend_from_slice(&[54, 4, 10, 0, 0, 1]);
-
-    // Lease Time: 60 seconds (Option 51, Length 4)
-    options.extend_from_slice(&[51, 4, 0, 0, 0, 60]);
-
-    // Renewal Time: 30 seconds (Option 58, Length 4)
-    options.extend_from_slice(&[58, 4, 0, 0, 0, 30]);
-
-    // Rebinding Time: 45 seconds (Option 59, Length 4)
-    options.extend_from_slice(&[59, 4, 0, 0, 0, 45]);
-
-    let lease_time: u32 = 86400; // 24 hours in seconds
-    options.push(51); // Option code for lease time
-    options.push(4);  // Length of the option (4 bytes)
-    options.extend_from_slice(&lease_time.to_be_bytes()); // Lease time in big-endian format
-
-    // End Option (255)
-    options.push(255);
-
-    // Create the response DHCP offer
-    DhcpLayer {
-        op: DhcpOperations::BootReply, // DHCP Offer
-        htype: request.htype,
-        hlen: request.hlen,
-        hops: 0,
-        xid: request.xid,  // Same transaction ID as the request
-        secs: 0,
-        flags: 0,
-        ciaddr: 0,  // Client IP address (0 in offer)
-        yiaddr: u32::from_be_bytes(offered_ip.octets()), // Offered IP address (10.0.0.2)
-        siaddr: u32::from_be_bytes(gateway_ip.octets()), // Gateway IP (10.0.0.1)
-        giaddr: 0,
-        chaddr: request.chaddr, // Client MAC address (from request)
-        sname: [0; 64], // Optional Server name (empty)
-        file: [0; 128], // Optional boot file (empty)
-        cookie: DhcpCookie::new(99, 130, 83, 99),
-        options,
-        length: 0, // You can calculate the full packet length if necessary
-    }
-}
-
-
-
-
-pub fn generate_dhcp_ack(request: &DhcpLayer, offered_ip: Ipv4Addr, gateway_ip: Ipv4Addr) -> DhcpLayer {
-    let mut options = Vec::new();
-    // DHCP Message Type: Offer (Option 53, Length 1, Value 2)
-    options.extend_from_slice(&[53, 1, DhcpMessageTypes::Ack.get_code()]);
-
-    // Subnet Mask: 255.255.255.0 (Option 1, Length 4)
-    options.extend_from_slice(&[1, 4, 255, 255, 255, 0]);
-
-    // Router (Gateway): 10.0.0.1 (Option 3, Length 4)
-    options.extend_from_slice(&[3, 4, 10, 0, 0, 1]);
-
-    // DNS Server: 8.8.8.8 (Option 6, Length 4)
-    options.extend_from_slice(&[6, 4, 8, 8, 8, 8]);
-
-    let lease_time: u32 = 86400; // 24 hours in seconds
-    options.push(51); // Option code for lease time
-    options.push(4);  // Length of the option (4 bytes)
-    options.extend_from_slice(&lease_time.to_be_bytes()); // Lease time in big-endian format
-
-    // End Option (255)
-    options.push(255);
-
-    // Create the response DHCP offer
-    DhcpLayer {
-        op: DhcpOperations::BootReply, // DHCP Offer
-        htype: request.htype,
-        hlen: request.hlen,
-        hops: 0,
-        xid: request.xid,  // Same transaction ID as the request
-        secs: 0,
-        flags: 0,
-        ciaddr: 0,  // Client IP address (0 in offer)
-        yiaddr: u32::from_be_bytes(offered_ip.octets()), // Offered IP address (10.0.0.2)
-        siaddr: u32::from_be_bytes(gateway_ip.octets()), // Gateway IP (10.0.0.1)
-        giaddr: 0,
-        chaddr: request.chaddr, // Client MAC address (from request)
-        sname: [0; 64], // Optional Server name (empty)
-        file: [0; 128], // Optional boot file (empty)
-        cookie: DhcpCookie::new(99, 130, 83, 99),
-        options,
-        length: 0, // You can calculate the full packet length if necessary
-    }
-}
-

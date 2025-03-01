@@ -2,8 +2,7 @@ use std::{io, mem, ptr};
 use std::ffi::CString;
 use std::net::{IpAddr, Ipv4Addr};
 use std::os::fd::RawFd;
-use crate::{Ifreq, DEST_MAC, ETHERTYPE_IPV4, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ, SYS_READ, SYS_CLOSE};
-use crate::utils::ip_utils::compute_checksum;
+use crate::{Ifreq, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ, SYS_READ, SYS_CLOSE};
 
 
 
