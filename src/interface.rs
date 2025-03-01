@@ -1,6 +1,5 @@
-use std::{io, mem, ptr};
-use std::ffi::CString;
-use std::net::{IpAddr, Ipv4Addr};
+use std::{io, mem};
+use std::net::Ipv4Addr;
 use std::os::fd::RawFd;
 use crate::{Ifreq, AF_INET, AF_PACKET, ETH_P_ALL, SIOCGIFHWADDR, SOCK_DGRAM, SOCK_RAW, SIOCGIFADDR, sockaddr_ll, ifreq, syscall, SYS_SENDTO, SYS_SOCKET, SYS_IOCTL, IFNAMSIZ, SYS_READ, SYS_CLOSE};
 
@@ -136,19 +135,15 @@ fn get_ip_address(interface: &str) -> io::Result<Ipv4Addr> {
     }
 
     let mut ifr: Ifreq = unsafe { mem::zeroed() };
-    let cstr = CString::new(interface).unwrap();
-    let name = cstr.as_bytes_with_nul();
 
-    // Copy the interface name to the ifr_name field of Ifreq
-    unsafe {
-        ptr::copy_nonoverlapping(
-            name.as_ptr(),
-            ifr.ifr_name.as_mut_ptr() as *mut u8, // Cast to *mut u8 here
-            name.len(),
-        );
+    // Convert &str to [i8; IFNAMSIZ] (interface name)
+    let mut name_bytes = [0i8; IFNAMSIZ];
+    for (i, &b) in interface.as_bytes().iter().enumerate() {
+        name_bytes[i] = b as i8;
     }
+    ifr.ifr_name.copy_from_slice(&name_bytes);
 
-    let res = unsafe { syscall(SYS_IOCTL, fd, SIOCGIFADDR, &mut ifr as *mut Ifreq) };
+    let res = unsafe { syscall(SYS_IOCTL, fd, SIOCGIFADDR, &mut ifr) };
 
     if res < 0 {
         unsafe { syscall(SYS_CLOSE, fd) };

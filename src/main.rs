@@ -155,13 +155,14 @@ struct sockaddr_in {
     sin_zero: [i8; 8],
 }
 
-// - USE SAME syscall as we do with PCAP
 extern "C" {
     fn syscall(number: i32, ...) -> i32;
 }
 
 
 
+//- WE HAVE 2 Ifreq....
+// - USE SAME syscall as we do with PCAP
 
 
 const DEST_INTERFACE: &str = "wlp7s0"; // Change this to your real interface
